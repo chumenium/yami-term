@@ -5,7 +5,8 @@
   --glass-opacity: 0.8;
   --glass-blur: 20px;
 
-  --color-base: rgba(13, 13, 18, var(--glass-opacity));
+  --color-base-rgb: 13, 13, 18;
+  --color-base: rgba(var(--color-base-rgb), var(--glass-opacity));
   --color-border: rgba(255, 255, 255, 0.08);
   --color-border-highlight: rgba(255, 255, 255, 0.12);
   --color-text-primary: #e8e8f0;
@@ -65,7 +66,7 @@ body {
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0 4px;
-  -webkit-app-region: no-drag;
+  -webkit-app-region: drag;
 }
 
 .tab {
@@ -156,6 +157,29 @@ body {
 .new-tab-btn:active,
 .settings-btn:active {
   background: rgba(255, 255, 255, 0.12);
+}
+
+.claude-launch-btn {
+  -webkit-app-region: no-drag;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255, 121, 198, 0.3);
+  border-radius: 7px;
+  background: rgba(255, 121, 198, 0.08);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.claude-launch-btn:hover {
+  background: rgba(255, 121, 198, 0.18);
+  border-color: var(--accent);
 }
 
 /* ==================== Terminals Container ==================== */
@@ -429,6 +453,38 @@ body {
   height: 1px;
   background: var(--color-border);
   margin: 16px 0;
+}
+
+/* Settings: Select Control */
+.settings-select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Settings: About Section */
+.settings-about {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.settings-about-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.settings-about-meta {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
 }
 
 /* ==================== Inline Completion v2 ==================== */

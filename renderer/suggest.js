@@ -318,6 +318,10 @@ window.YamiSuggest = (() => {
       const screenRect = screenEl.getBoundingClientRect();
       const paneRect = pane.getBoundingClientRect();
 
+      // Pane-relative offset (screen is positioned within pane with padding)
+      const offsetX = screenRect.left - paneRect.left;
+      const offsetY = screenRect.top - paneRect.top;
+
       // Cell dimensions
       const charWidth = screenRect.width / term.cols;
       const charHeight = screenRect.height / term.rows;
@@ -331,8 +335,8 @@ window.YamiSuggest = (() => {
       const yOffset = (cursorY - viewportY) * charHeight;
 
       return {
-        x: cursorX * charWidth,
-        y: yOffset + charHeight,
+        x: offsetX + cursorX * charWidth,
+        y: offsetY + yOffset,
       };
     } catch (e) {
       return null;
@@ -354,6 +358,10 @@ window.YamiSuggest = (() => {
       const screenRect = screenEl.getBoundingClientRect();
       const paneRect = pane.getBoundingClientRect();
 
+      // Pane-relative offset (screen is positioned within pane with padding)
+      const offsetX = screenRect.left - paneRect.left;
+      const offsetY = screenRect.top - paneRect.top;
+
       // Cell dimensions
       const charWidth = screenRect.width / term.cols;
       const charHeight = screenRect.height / term.rows;
@@ -370,13 +378,13 @@ window.YamiSuggest = (() => {
       const popupHeight = Math.min(state.candidates.length, MAX_POPUP_ITEMS) * 24 + 16;
 
       // Check if popup would go below screen
-      const yPos = yOffset + charHeight;
-      const spaceBelow = screenRect.height - yPos;
+      const yPos = offsetY + yOffset + charHeight;
+      const spaceBelow = screenRect.height - (yOffset + charHeight);
       const above = spaceBelow < popupHeight;
 
       return {
-        x: cursorX * charWidth,
-        y: above ? yOffset - popupHeight : yPos,
+        x: offsetX + cursorX * charWidth,
+        y: above ? (offsetY + yOffset - popupHeight) : yPos,
         above,
       };
     } catch (e) {

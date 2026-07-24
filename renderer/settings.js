@@ -7,7 +7,7 @@ window.YamiSettings = (() => {
   const SETTINGS_SCHEMA = [
     {
       key: 'fontSize',
-      label: 'Font Size',
+      labelKey: 'settings.fontSize',
       type: 'slider',
       min: 10,
       max: 24,
@@ -16,14 +16,14 @@ window.YamiSettings = (() => {
     },
     {
       key: 'fontFamily',
-      label: 'Font Family',
+      labelKey: 'settings.fontFamily',
       type: 'text',
       default: 'Menlo, Monaco, "Courier New", monospace',
       placeholder: 'e.g., Menlo, Monaco',
     },
     {
       key: 'opacity',
-      label: 'Glass Opacity',
+      labelKey: 'settings.opacity',
       type: 'slider',
       min: 0.3,
       max: 1.0,
@@ -32,28 +32,62 @@ window.YamiSettings = (() => {
     },
     {
       key: 'accent',
-      label: 'Accent Color',
+      labelKey: 'settings.accent',
       type: 'color',
       default: '#ff79c6',
     },
     {
       key: 'cursorBlink',
-      label: 'Cursor Blink',
+      labelKey: 'settings.cursorBlink',
       type: 'toggle',
       default: true,
     },
     {
       key: 'shell',
-      label: 'Shell',
+      labelKey: 'settings.shell',
       type: 'text',
       default: '/bin/zsh',
       placeholder: 'e.g., /bin/zsh',
     },
     {
       key: 'suggest',
-      label: 'Command Suggest',
+      labelKey: 'settings.suggest',
       type: 'toggle',
       default: true,
+    },
+    {
+      key: 'theme',
+      labelKey: 'settings.theme',
+      type: 'select',
+      options: (window.YamiThemes?.THEMES || []).map(t => ({ value: t.id, label: t.label })),
+      default: 'yamikawa',
+    },
+    {
+      key: 'letterSpacing',
+      labelKey: 'settings.letterSpacing',
+      type: 'slider',
+      min: -2,
+      max: 4,
+      step: 0.5,
+      default: 0,
+    },
+    {
+      key: 'lineHeight',
+      labelKey: 'settings.lineHeight',
+      type: 'slider',
+      min: 1.0,
+      max: 2.0,
+      step: 0.1,
+      default: 1.0,
+    },
+    {
+      key: 'scrollback',
+      labelKey: 'settings.scrollback',
+      type: 'slider',
+      min: 500,
+      max: 10000,
+      step: 500,
+      default: 1000,
     },
   ];
 
@@ -67,6 +101,12 @@ window.YamiSettings = (() => {
     if (!modal) {
       console.warn('settings-modal element not found');
       return;
+    }
+
+    // themeスキーマのoptions再計算（window.YamiThemesが読み込まれている場合）
+    const themeSchema = SETTINGS_SCHEMA.find(s => s.key === 'theme');
+    if (themeSchema && window.YamiThemes?.THEMES) {
+      themeSchema.options = window.YamiThemes.THEMES.map(t => ({ value: t.id, label: t.label }));
     }
 
     // Modal内容を構築
@@ -104,7 +144,7 @@ window.YamiSettings = (() => {
 
     const title = document.createElement('h2');
     title.className = 'settings-title';
-    title.textContent = 'Settings';
+    title.textContent = window.YamiI18n?.t?.('settings.title') || 'Settings';
     card.appendChild(title);
 
     SETTINGS_SCHEMA.forEach((schema, idx) => {
@@ -116,7 +156,7 @@ window.YamiSettings = (() => {
 
       const labelText = document.createElement('span');
       labelText.className = 'settings-label-text';
-      labelText.textContent = schema.label;
+      labelText.textContent = window.YamiI18n?.t?.(schema.labelKey) || schema.labelKey;
       label.appendChild(labelText);
 
       let inputElement;
@@ -190,6 +230,22 @@ window.YamiSettings = (() => {
         });
 
         label.appendChild(toggleWrapper);
+      } else if (schema.type === 'select') {
+        inputElement = document.createElement('select');
+        inputElement.className = 'settings-select';
+        inputElement.dataset.key = schema.key;
+        schema.options.forEach(opt => {
+          const optionEl = document.createElement('option');
+          optionEl.value = opt.value;
+          optionEl.textContent = opt.label;
+          inputElement.appendChild(optionEl);
+        });
+
+        inputElement.addEventListener('change', e => {
+          onSettingChanged(schema.key, e.target.value);
+        });
+
+        label.appendChild(inputElement);
       } else if (schema.type === 'text') {
         inputElement = document.createElement('input');
         inputElement.type = 'text';
@@ -219,6 +275,35 @@ window.YamiSettings = (() => {
       }
     });
 
+    // Aboutセクション追加
+    const aboutSection = document.createElement('div');
+    aboutSection.className = 'settings-about';
+
+    const aboutName = document.createElement('div');
+    aboutName.className = 'settings-about-name';
+    aboutName.textContent = 'yami-term';
+    aboutSection.appendChild(aboutName);
+
+    const aboutMeta = document.createElement('div');
+    aboutMeta.className = 'settings-about-meta';
+    aboutMeta.textContent = '...';
+    aboutSection.appendChild(aboutMeta);
+
+    card.appendChild(aboutSection);
+
+    if (window.yamiterm?.getAppInfo) {
+      window.yamiterm.getAppInfo().then(info => {
+        const versionLabel = window.YamiI18n?.t?.('settings.about.version') || 'Version';
+        const authorLabel = window.YamiI18n?.t?.('settings.about.author') || 'Author';
+        aboutMeta.textContent = `${versionLabel} v${info.version} · ${authorLabel}: ${info.author}`;
+        if (info.name && info.name !== 'yami-term') {
+          aboutName.textContent = info.name;
+        }
+      }).catch(() => {
+        aboutMeta.textContent = '';
+      });
+    }
+
     modal.appendChild(card);
   }
 
@@ -242,6 +327,8 @@ window.YamiSettings = (() => {
           input.value = value;
         } else if (schema.type === 'toggle') {
           input.checked = value === true;
+        } else if (schema.type === 'select') {
+          input.value = value;
         } else if (schema.type === 'text') {
           input.value = value || '';
         }

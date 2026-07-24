@@ -46,4 +46,8 @@ contextBridge.exposeInMainWorld('yamiterm', {
   async suggest(prefix) {
     return ipcRenderer.invoke('suggest:query', { prefix });
   },
+
+  async getAppInfo() {
+    return ipcRenderer.invoke('app:getInfo');
+  },
 });

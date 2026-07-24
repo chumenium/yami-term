@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const PtyManager = require('./main/pty-manager');
 const config = require('./main/config');
+const pkg = require('./package.json');
 
 // Load config on startup
 config.load();
@@ -134,6 +135,16 @@ function setupIpcChannels() {
       // Fallback to empty array if suggest-source is not available
       return [];
     }
+  });
+
+  // app:getInfo - get app info
+  ipcMain.handle('app:getInfo', () => {
+    return {
+      name: pkg.productName || pkg.name,
+      version: pkg.version,
+      author: pkg.author,
+      homepage: pkg.homepage || '',
+    };
   });
 }
 

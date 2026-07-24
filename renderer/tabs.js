@@ -24,6 +24,9 @@ window.YamiTabs = (() => {
         fontFamily: config.fontFamily || 'Menlo, Monaco, "Courier New", monospace',
         fontSize: config.fontSize || 14,
         cursorBlink: config.cursorBlink !== false,
+        letterSpacing: config.letterSpacing || 0,
+        lineHeight: config.lineHeight || 1.0,
+        scrollback: config.scrollback || 1000,
         theme: {
           background: 'rgba(13,13,18,0)',
         },
@@ -120,6 +123,16 @@ window.YamiTabs = (() => {
     return inst ? inst.pane : null;
   }
 
+  async function newTabWithCommand(command) {
+    await newTab();
+    const activeId = getActiveId();
+    if (activeId) {
+      setTimeout(() => {
+        window.yamiterm.write(activeId, command + '\r');
+      }, 400);
+    }
+  }
+
   function render() {
     const tabBar = document.getElementById('tab-bar');
     tabBar.innerHTML = '';
@@ -170,6 +183,7 @@ window.YamiTabs = (() => {
   return {
     init,
     newTab,
+    newTabWithCommand,
     closeTab,
     activate,
     activeTerm,

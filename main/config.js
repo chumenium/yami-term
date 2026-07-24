@@ -9,6 +9,10 @@ const DEFAULTS = {
   accent: '#ff79c6',
   shell: process.env.SHELL || '/bin/zsh',
   suggest: true,
+  theme: 'yamikawa',
+  letterSpacing: 0,
+  lineHeight: 1.0,
+  scrollback: 1000,
 };
 
 const CONFIG_FILE = path.join(process.env.HOME, '.yami-term.json');
@@ -40,7 +44,7 @@ function set(partial) {
   }
 
   // Whitelist allowed keys
-  const allowedKeys = ['fontSize', 'fontFamily', 'cursorBlink', 'opacity', 'accent', 'shell', 'suggest'];
+  const allowedKeys = ['fontSize', 'fontFamily', 'cursorBlink', 'opacity', 'accent', 'shell', 'suggest', 'theme', 'letterSpacing', 'lineHeight', 'scrollback'];
   const filtered = {};
 
   for (const key of allowedKeys) {

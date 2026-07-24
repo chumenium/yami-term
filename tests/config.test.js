@@ -139,3 +139,60 @@ test('config.js - 複数プロパティのmerge設定', async (t) => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('config.js - DEFAULTSに新テーマ設定が含まれること', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    const defaults = config.DEFAULTS;
+    assert.strictEqual(defaults.theme, 'yamikawa');
+    assert.strictEqual(defaults.letterSpacing, 0);
+    assert.strictEqual(defaults.lineHeight, 1.0);
+    assert.strictEqual(defaults.scrollback, 1000);
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('config.js - set()で別のテーマを設定して再loadで反映', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    // テーマを dracula に設定
+    config.set({ theme: 'dracula' });
+
+    // ファイルの内容を確認
+    const configFile = path.join(tmpDir, '.yami-term.json');
+    const content = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+    assert.strictEqual(content.theme, 'dracula');
+
+    // 他のデフォルト値は維持されているか確認
+    assert.strictEqual(content.fontSize, 14);
+    assert.strictEqual(content.fontFamily, 'Menlo');
+    assert.strictEqual(content.cursorBlink, true);
+    assert.strictEqual(content.opacity, 0.8);
+    assert.strictEqual(content.letterSpacing, 0);
+    assert.strictEqual(content.lineHeight, 1.0);
+    assert.strictEqual(content.scrollback, 1000);
+
+    // get()で取得してもテーマが反映されている
+    const result = config.get();
+    assert.strictEqual(result.theme, 'dracula');
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
