@@ -74,6 +74,18 @@ function createSuggestSource(options = {}) {
     return historyCache;
   }
 
+  // A command must be a top-level file (not a child directory) and
+  // executable by someone, otherwise it isn't a real runnable command.
+  function isExecutableFile(fullPath) {
+    try {
+      const stat = fs.statSync(fullPath);
+      if (!stat.isFile()) return false;
+      return (stat.mode & 0o111) !== 0;
+    } catch (err) {
+      return false;
+    }
+  }
+
   // Load command cache (run once at initialization)
   function loadCommandCache() {
     if (commandCache !== null) {
@@ -87,7 +99,9 @@ function createSuggestSource(options = {}) {
       try {
         const files = fs.readdirSync(dir);
         files.forEach(file => {
-          commandCache.add(file);
+          if (isExecutableFile(path.join(dir, file))) {
+            commandCache.add(file);
+          }
         });
       } catch (err) {
         // Directory doesn't exist or can't be read - skip

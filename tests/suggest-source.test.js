@@ -118,7 +118,38 @@ test('query() type=command for executables in pathEnv', (t) => {
     const commands = results.filter(r => r.type === 'command');
     assert(commands.some(r => r.text === 'git-custom'));
     assert(commands.some(r => r.text === 'git-status'));
-    assert(commands.some(r => r.text === 'gitignore')); // Listed but not executable
+    assert(!commands.some(r => r.text === 'gitignore')); // non-executable file, must be excluded
+  } finally {
+    cleanupTempDir(tmpDir);
+  }
+});
+
+test('query() excludes child directories inside pathEnv dirs', (t) => {
+  const tmpDir = createTempDir();
+  const binDir = path.join(tmpDir, 'bin');
+  fs.mkdirSync(binDir);
+
+  try {
+    fs.writeFileSync(path.join(binDir, 'gitk'), 'echo test', 'utf8');
+    fs.chmodSync(path.join(binDir, 'gitk'), 0o755);
+
+    // A subdirectory that happens to live alongside real commands
+    // (e.g. node_modules/.bin style layouts) must never be suggested
+    // as a runnable command.
+    fs.mkdirSync(path.join(binDir, 'git-hooks'));
+    fs.writeFileSync(path.join(binDir, 'git-hooks', 'pre-commit'), 'echo test', 'utf8');
+    fs.chmodSync(path.join(binDir, 'git-hooks', 'pre-commit'), 0o755);
+
+    const source = createSuggestSource({
+      historyFile: path.join(tmpDir, '.zsh_history_nonexistent'),
+      pathEnv: binDir,
+    });
+    const results = source.query('git');
+
+    const commands = results.filter(r => r.type === 'command');
+    assert(commands.some(r => r.text === 'gitk'));
+    assert(!commands.some(r => r.text === 'git-hooks')); // directory, must be excluded
+    assert(!commands.some(r => r.text === 'pre-commit')); // nested file, never scanned
   } finally {
     cleanupTempDir(tmpDir);
   }

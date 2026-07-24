@@ -29,11 +29,29 @@ function createWindow() {
     },
   });
 
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+
   const indexPath = path.join(__dirname, 'renderer', 'index.html');
   mainWindow.loadFile(indexPath);
 
   if (process.env.YAMI_TERM_DEBUG) {
     mainWindow.webContents.openDevTools();
+  }
+}
+
+// Safely send an IPC message to the renderer, guarding against a
+// window/webContents that has already been destroyed (e.g. during quit,
+// when a PTY's async 'exit' event arrives after app.quit() has run).
+function sendToRenderer(channel, payload) {
+  if (
+    mainWindow &&
+    !mainWindow.isDestroyed() &&
+    mainWindow.webContents &&
+    !mainWindow.webContents.isDestroyed()
+  ) {
+    mainWindow.webContents.send(channel, payload);
   }
 }
 
@@ -46,16 +64,12 @@ function setupPtyManager() {
 
   // Forward PTY data to renderer
   ptyManager.on('data', (payload) => {
-    if (mainWindow && mainWindow.webContents) {
-      mainWindow.webContents.send('term:data', payload);
-    }
+    sendToRenderer('term:data', payload);
   });
 
   // Forward PTY exit to renderer
   ptyManager.on('exit', (payload) => {
-    if (mainWindow && mainWindow.webContents) {
-      mainWindow.webContents.send('term:exit', payload);
-    }
+    sendToRenderer('term:exit', payload);
   });
 }
 
@@ -103,9 +117,7 @@ function setupIpcChannels() {
   ipcMain.handle('config:set', (event, partial) => {
     config.set(partial);
     // Broadcast config change to all windows
-    if (mainWindow && mainWindow.webContents) {
-      mainWindow.webContents.send('config:changed', config.get());
-    }
+    sendToRenderer('config:changed', config.get());
   });
 
   // suggest:query - query command suggestions
