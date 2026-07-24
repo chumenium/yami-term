@@ -48,6 +48,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.warn('[yami-term] initial theme application failed:', err);
   }
 
+  // (a4) 起動時のbloomエフェクト適用
+  try {
+    document.documentElement.style.setProperty('--bloom-blur', `${currentConfig.bloomIntensity ?? 4}px`);
+    const allTermPanes = document.querySelectorAll('.term-pane');
+    allTermPanes.forEach(pane => {
+      pane.classList.toggle('bloom-enabled', currentConfig.bloomEnabled === true);
+    });
+  } catch (err) {
+    console.warn('[yami-term] initial bloom application failed:', err);
+  }
+
   // (b) YamiTabs.init()呼び出し（存在ガード付き）
   try {
     if (window.YamiTabs && typeof window.YamiTabs.init === 'function') {
@@ -93,6 +104,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       // CSS変数更新
       document.documentElement.style.setProperty('--accent', newConfig.accent || '#ff79c6');
       document.documentElement.style.setProperty('--glass-opacity', (newConfig.opacity || 0.8).toString());
+
+      // bloomエフェクト反映
+      document.documentElement.style.setProperty('--bloom-blur', `${newConfig.bloomIntensity ?? 4}px`);
+      const termPanes = document.querySelectorAll('.term-pane');
+      termPanes.forEach(pane => {
+        pane.classList.toggle('bloom-enabled', newConfig.bloomEnabled === true);
+      });
 
       // テーマ適用（color-base-rgb および xterm theme）
       if (window.YamiThemes?.getById && typeof window.YamiThemes.getById === 'function') {

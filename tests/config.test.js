@@ -196,3 +196,86 @@ test('config.js - set()で別のテーマを設定して再loadで反映', async
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('config.js - DEFAULTSにBloomエフェクト設定が含まれること', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    const defaults = config.DEFAULTS;
+    assert.strictEqual(defaults.bloomEnabled, false);
+    assert.strictEqual(defaults.bloomIntensity, 4);
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('config.js - set()でbloomEnabledをtrueに設定して反映', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    // bloomEnabled を true に設定
+    config.set({ bloomEnabled: true });
+
+    // ファイルの内容を確認
+    const configFile = path.join(tmpDir, '.yami-term.json');
+    const content = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+    assert.strictEqual(content.bloomEnabled, true);
+
+    // 他のデフォルト値は維持されているか確認
+    assert.strictEqual(content.bloomIntensity, 4);
+    assert.strictEqual(content.fontSize, 14);
+    assert.strictEqual(content.fontFamily, 'Menlo');
+
+    // get()で取得しても反映されている
+    const result = config.get();
+    assert.strictEqual(result.bloomEnabled, true);
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('config.js - set()でbloomIntensityを8に設定して反映', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    // bloomIntensity を 8 に設定
+    config.set({ bloomIntensity: 8 });
+
+    // ファイルの内容を確認
+    const configFile = path.join(tmpDir, '.yami-term.json');
+    const content = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+    assert.strictEqual(content.bloomIntensity, 8);
+
+    // 他のデフォルト値は維持されているか確認
+    assert.strictEqual(content.bloomEnabled, false);
+    assert.strictEqual(content.fontSize, 14);
+    assert.strictEqual(content.fontFamily, 'Menlo');
+
+    // get()で取得しても反映されている
+    const result = config.get();
+    assert.strictEqual(result.bloomIntensity, 8);
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

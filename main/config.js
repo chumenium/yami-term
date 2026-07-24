@@ -13,6 +13,8 @@ const DEFAULTS = {
   letterSpacing: 0,
   lineHeight: 1.0,
   scrollback: 1000,
+  bloomEnabled: false,
+  bloomIntensity: 4,
 };
 
 const CONFIG_FILE = path.join(process.env.HOME, '.yami-term.json');
@@ -44,7 +46,7 @@ function set(partial) {
   }
 
   // Whitelist allowed keys
-  const allowedKeys = ['fontSize', 'fontFamily', 'cursorBlink', 'opacity', 'accent', 'shell', 'suggest', 'theme', 'letterSpacing', 'lineHeight', 'scrollback'];
+  const allowedKeys = ['fontSize', 'fontFamily', 'cursorBlink', 'opacity', 'accent', 'shell', 'suggest', 'theme', 'letterSpacing', 'lineHeight', 'scrollback', 'bloomEnabled', 'bloomIntensity'];
   const filtered = {};
 
   for (const key of allowedKeys) {

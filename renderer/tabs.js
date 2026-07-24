@@ -59,6 +59,7 @@ window.YamiTabs = (() => {
       pane.className = 'term-pane';
       pane.id = `pane-${id}`;
       document.getElementById('terminals').appendChild(pane);
+      if (config.bloomEnabled === true) pane.classList.add('bloom-enabled');
 
       terminal.open(pane);
       fitAddon.fit();

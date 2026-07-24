@@ -4,6 +4,7 @@
   --accent2: #bd93f9;
   --glass-opacity: 0.8;
   --glass-blur: 20px;
+  --bloom-blur: 4px;
 
   --color-base-rgb: 13, 13, 18;
   --color-base: rgba(var(--color-base-rgb), var(--glass-opacity));
@@ -210,6 +211,13 @@ body {
 .term-pane:not([id*="pane"]):not([style*="display: none"]) {
   display: flex;
   flex-direction: column;
+}
+
+/* ==================== Bloom Effect ==================== */
+.term-pane.bloom-enabled .xterm-screen canvas {
+  filter:
+    drop-shadow(0 0 var(--bloom-blur) var(--accent))
+    drop-shadow(0 0 calc(var(--bloom-blur) * 2) var(--accent));
 }
 
 .xterm {

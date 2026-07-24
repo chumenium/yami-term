@@ -89,6 +89,21 @@ window.YamiSettings = (() => {
       step: 500,
       default: 1000,
     },
+    {
+      key: 'bloomEnabled',
+      labelKey: 'settings.bloomEnabled',
+      type: 'toggle',
+      default: false,
+    },
+    {
+      key: 'bloomIntensity',
+      labelKey: 'settings.bloomIntensity',
+      type: 'slider',
+      min: 0,
+      max: 12,
+      step: 1,
+      default: 4,
+    },
   ];
 
   async function init() {
