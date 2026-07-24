@@ -37,7 +37,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 8px;
+  padding: 0 12px;
   -webkit-app-region: drag;
   background: linear-gradient(to bottom,
     rgba(255, 255, 255, 0.04),
@@ -59,7 +59,9 @@ body {
   display: flex;
   gap: 6px;
   align-items: center;
+  height: 100%;
   flex: 1;
+  min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0 4px;
@@ -87,7 +89,6 @@ body {
 .tab:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: var(--color-border-highlight);
-  transform: translateY(-1px);
 }
 
 .tab.active {
@@ -430,21 +431,96 @@ body {
   margin: 16px 0;
 }
 
-/* ==================== Suggest Layer ==================== */
+/* ==================== Inline Completion v2 ==================== */
+.suggest-ghost-inline {
+  font-family: 'Courier New', monospace;
+  color: rgba(255, 121, 198, 0.45);
+  pointer-events: none;
+  white-space: pre;
+  z-index: 140;
+}
+
+.suggest-popup {
+  position: absolute;
+  background: rgba(20, 18, 30, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 4px 16px rgba(0, 0, 0, 0.3);
+  min-width: 180px;
+  max-height: 120px;
+  overflow-y: auto;
+  animation: suggestFadeIn 0.12s ease-out;
+  pointer-events: auto;
+  z-index: 145;
+}
+
+@keyframes suggestFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.suggest-popup-item {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: all 0.1s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggest-popup-item:hover {
+  background: rgba(189, 147, 249, 0.15);
+}
+
+.suggest-popup-item.selected {
+  background: rgba(255, 121, 198, 0.25);
+  border-left: 2px solid var(--accent);
+  padding-left: 8px;
+  color: var(--color-text-primary);
+}
+
+.suggest-popup .suggest-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.suggest-popup.above {
+  flex-direction: column-reverse;
+}
+
+/* ==================== Suggest Layer (Legacy - Disabled) ==================== */
+/* Note: Old fixed bottom bar style - kept for compatibility but visually disabled via integrator */
 #suggest-layer {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to bottom,
-    rgba(13, 13, 18, 0.95),
-    rgba(13, 13, 18, 0.98));
-  border-top: 1px solid var(--color-border);
-  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-  max-height: 200px;
-  overflow-y: auto;
+  background: transparent;
+  border-top: none;
+  backdrop-filter: none;
+  max-height: 0;
+  overflow: hidden;
   z-index: 150;
-  animation: suggestSlideUp 0.2s ease-out;
+  pointer-events: none;
 }
 
 @keyframes suggestSlideUp {

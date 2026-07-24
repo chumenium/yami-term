@@ -3,6 +3,17 @@ window.YamiTabs = (() => {
   let state = TabsState.initialState();
   const termInstances = new Map();
   let resizeObservers = new Map();
+  let initialized = false;
+
+  function init() {
+    if (initialized) return;
+    initialized = true;
+
+    const newTabBtn = document.getElementById('new-tab-btn');
+    if (newTabBtn) {
+      newTabBtn.addEventListener('click', newTab);
+    }
+  }
 
   async function newTab() {
     try {
@@ -95,8 +106,18 @@ window.YamiTabs = (() => {
     return inst ? inst.terminal : null;
   }
 
+  function getAllTerms() {
+    return Array.from(termInstances.values()).map(inst => inst.terminal);
+  }
+
   function getActiveId() {
     return state.activeId;
+  }
+
+  function getActiveTermPane() {
+    if (!state.activeId) return null;
+    const inst = termInstances.get(state.activeId);
+    return inst ? inst.pane : null;
   }
 
   function render() {
@@ -147,11 +168,14 @@ window.YamiTabs = (() => {
   });
 
   return {
+    init,
     newTab,
     closeTab,
     activate,
     activeTerm,
     getRawTerm,
+    getAllTerms,
     getActiveId,
+    getActiveTermPane,
   };
 })();

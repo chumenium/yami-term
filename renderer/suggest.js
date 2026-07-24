@@ -1,56 +1,113 @@
 window.YamiSuggest = (() => {
-  let buffer = '';
-  let suggestions = [];
-  let selectedIndex = -1;
+  let state = null;
   let debounceTimer = null;
   let isEnabled = false;
   let getActiveTerm = null;
-  let suggestLayer = null;
   let initialized = false;
 
+  // DOM elements
+  let ghostOverlay = null;
+  let popupList = null;
+  let activeTermPane = null;
+
   const DEBOUNCE_MS = 150;
+  const MAX_POPUP_ITEMS = 5;
 
   // Initialize module
-  function init(options = {}) {
+  function init(opts = {}) {
     if (initialized) return;
     initialized = true;
-    getActiveTerm = options.getActiveTerm || (() => {
+
+    // Initialize suggest-view-state if not already
+    if (!window.YamiSuggestViewState) {
+      console.warn('YamiSuggestViewState not available');
+      return;
+    }
+
+    state = window.YamiSuggestViewState.createState();
+
+    // Set up getActiveTerm
+    getActiveTerm = opts.getActiveTerm || (() => {
       return window.YamiTabs?.activeTerm?.() || null;
     });
 
-    // Create suggest layer if not exists
-    if (!suggestLayer) {
-      suggestLayer = document.getElementById('suggest-layer');
-      if (!suggestLayer) {
-        suggestLayer = document.createElement('div');
-        suggestLayer.id = 'suggest-layer';
-        suggestLayer.className = 'suggest-layer';
-        suggestLayer.style.display = 'none';
-        document.body.appendChild(suggestLayer);
-      }
+    // Get initial enable state
+    if (window.yamiterm?.getConfig) {
+      window.yamiterm.getConfig().then(config => {
+        isEnabled = config.suggest !== false;
+      }).catch(() => {
+        isEnabled = true; // default to enabled
+      });
     }
 
-    // Check initial enable state
-    window.yamiterm?.getConfig?.().then(config => {
-      isEnabled = config.suggest !== false;
-    });
-
     // Listen to config changes
-    window.yamiterm?.onConfigChanged?.((config) => {
-      isEnabled = config.suggest !== false;
-      if (!isEnabled) {
+    if (window.yamiterm?.onConfigChanged) {
+      window.yamiterm.onConfigChanged((config) => {
+        isEnabled = config.suggest !== false;
+        if (!isEnabled) {
+          closeSuggestions();
+        }
+      });
+    }
+
+    // Create DOM elements
+    createDOMElements();
+
+    // Attach event listeners
+    attachEventListeners();
+  }
+
+  // Create ghost overlay and popup list elements
+  function createDOMElements() {
+    // Ghost overlay (inline, attached to active term pane)
+    ghostOverlay = document.createElement('div');
+    ghostOverlay.className = 'suggest-ghost-inline';
+    ghostOverlay.style.display = 'none';
+    ghostOverlay.style.position = 'absolute';
+    ghostOverlay.style.pointerEvents = 'none';
+
+    // Popup list
+    popupList = document.createElement('div');
+    popupList.className = 'suggest-popup';
+    popupList.style.display = 'none';
+    popupList.style.position = 'absolute';
+  }
+
+  // Attach to active term pane
+  function attachToTermPane() {
+    const pane = window.YamiTabs?.getActiveTermPane?.();
+    if (!pane) return false;
+
+    if (activeTermPane !== pane) {
+      // Remove from old pane and close suggestions
+      if (activeTermPane) {
+        closeSuggestions();
+        ghostOverlay.remove();
+        popupList.remove();
+      }
+
+      activeTermPane = pane;
+      activeTermPane.appendChild(ghostOverlay);
+      activeTermPane.appendChild(popupList);
+    }
+
+    return true;
+  }
+
+  // Attach keyboard and composition event listeners
+  function attachEventListeners() {
+    document.addEventListener('keydown', handleKeyDown, true);
+    document.addEventListener('compositionstart', () => {
+      if (state.candidates.length > 0) {
+        closeSuggestions();
+      }
+    }, true);
+    document.addEventListener('compositionend', handleCompositionEnd, true);
+    window.addEventListener('resize', () => {
+      if (state.candidates.length > 0) {
         closeSuggestions();
       }
     });
-
-    // Attach keyboard listener
-    attachKeyboardListener();
-  }
-
-  // Attach keyboard event listener
-  function attachKeyboardListener() {
-    document.addEventListener('keydown', handleKeyDown, true);
-    document.addEventListener('compositionend', handleCompositionEnd, true);
   }
 
   // Handle keydown events
@@ -63,18 +120,18 @@ window.YamiSuggest = (() => {
     const key = e.key;
     const code = e.code;
 
-    // Handle suggestion navigation and confirmation
-    if (suggestions.length > 0) {
+    // Only prevent default if suggestions are shown
+    if (state.candidates.length > 0) {
       if (key === 'ArrowDown') {
         e.preventDefault();
         e.stopPropagation();
-        selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
+        state = window.YamiSuggestViewState.moveSelection(state, 1);
         renderSuggestions();
         return;
       } else if (key === 'ArrowUp') {
         e.preventDefault();
         e.stopPropagation();
-        selectedIndex = Math.max(selectedIndex - 1, 0);
+        state = window.YamiSuggestViewState.moveSelection(state, -1);
         renderSuggestions();
         return;
       } else if (key === 'Tab' || key === 'ArrowRight') {
@@ -90,26 +147,27 @@ window.YamiSuggest = (() => {
       }
     }
 
-    // Update buffer for regular keys
-    if (key === 'Enter' || key === '\r') {
-      buffer = '';
-      selectedIndex = -1;
+    // Handle character input and control keys
+    if (key === 'Enter' || key === 'Return') {
+      state = window.YamiSuggestViewState.reset(state);
       closeSuggestions();
     } else if (key === 'Backspace') {
-      if (buffer.length > 0) {
-        buffer = buffer.slice(0, -1);
+      if (state.buffer.length > 0) {
+        state = {
+          ...state,
+          buffer: state.buffer.slice(0, -1),
+        };
         updateSuggestions();
       }
-    } else if (key === 'Control' || key === 'c') {
-      // Check for Ctrl+C
-      if (e.ctrlKey && code === 'KeyC') {
-        buffer = '';
-        selectedIndex = -1;
-        closeSuggestions();
-      }
-    } else if (key.length === 1 && !e.ctrlKey && !e.metaKey) {
+    } else if (e.ctrlKey && code === 'KeyC') {
+      state = window.YamiSuggestViewState.reset(state);
+      closeSuggestions();
+    } else if (key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
       // Regular printable character
-      buffer += key;
+      state = {
+        ...state,
+        buffer: state.buffer + key,
+      };
       updateSuggestions();
     }
   }
@@ -123,7 +181,10 @@ window.YamiSuggest = (() => {
 
     const text = e.data || '';
     if (text) {
-      buffer += text;
+      state = {
+        ...state,
+        buffer: state.buffer + text,
+      };
       updateSuggestions();
     }
   }
@@ -135,103 +196,231 @@ window.YamiSuggest = (() => {
     }
 
     debounceTimer = setTimeout(() => {
-      if (buffer.length < 2) {
+      if (state.buffer.length < 2) {
         closeSuggestions();
         return;
       }
 
-      window.yamiterm?.suggest?.(buffer).then(results => {
-        suggestions = results || [];
-        selectedIndex = suggestions.length > 0 ? 0 : -1;
-        renderSuggestions();
-      }).catch(() => {
-        suggestions = [];
-        selectedIndex = -1;
-        closeSuggestions();
-      });
+      if (window.yamiterm?.suggest) {
+        window.yamiterm.suggest(state.buffer).then(results => {
+          state = window.YamiSuggestViewState.setCandidates(state, results || [], state.buffer);
+          renderSuggestions();
+        }).catch(() => {
+          state = window.YamiSuggestViewState.reset(state);
+          closeSuggestions();
+        });
+      }
     }, DEBOUNCE_MS);
   }
 
-  // Render suggestions dropdown
+  // Render ghost text and popup list
   function renderSuggestions() {
-    if (!suggestLayer) return;
-
-    if (suggestions.length === 0) {
-      suggestLayer.style.display = 'none';
+    if (state.candidates.length === 0) {
+      closeSuggestions();
       return;
     }
 
-    suggestLayer.innerHTML = '';
-    suggestLayer.style.display = 'block';
+    if (!attachToTermPane()) {
+      return;
+    }
 
-    suggestions.forEach((item, index) => {
+    renderGhost();
+    renderPopupList();
+  }
+
+  // Render inline ghost text
+  function renderGhost() {
+    const ghost = window.YamiSuggestViewState.currentGhost(state);
+
+    if (!ghost || ghost.length === 0) {
+      ghostOverlay.style.display = 'none';
+      return;
+    }
+
+    ghostOverlay.textContent = ghost;
+    const coords = calculateCursorCoords();
+    if (coords) {
+      ghostOverlay.style.left = coords.x + 'px';
+      ghostOverlay.style.top = coords.y + 'px';
+      ghostOverlay.style.display = 'block';
+    } else {
+      ghostOverlay.style.display = 'none';
+    }
+  }
+
+  // Render popup candidate list
+  function renderPopupList() {
+    popupList.innerHTML = '';
+
+    const itemsToShow = state.candidates.slice(0, MAX_POPUP_ITEMS);
+    itemsToShow.forEach((item, index) => {
       const itemEl = document.createElement('div');
-      itemEl.className = 'suggest-item' + (index === selectedIndex ? ' selected' : '');
-
-      // Icon based on type
-      const icon = item.type === 'history' ? '🕐' : '⚡';
-
-      // Main text
-      const mainText = document.createElement('span');
-      mainText.className = 'suggest-main';
-      mainText.textContent = icon + ' ' + item.text;
-
-      // Ghost text (remainder after prefix)
-      const ghostText = document.createElement('span');
-      ghostText.className = 'suggest-ghost';
-      if (item.text.length > buffer.length) {
-        ghostText.textContent = item.text.slice(buffer.length);
+      itemEl.className = 'suggest-popup-item';
+      if (index === state.selectedIndex) {
+        itemEl.classList.add('selected');
       }
 
-      itemEl.appendChild(mainText);
-      itemEl.appendChild(ghostText);
+      // Icon
+      const icon = document.createElement('span');
+      icon.className = 'suggest-icon';
+      icon.textContent = item.type === 'history' ? '🕐' : '⚡';
+
+      // Text
+      const text = document.createElement('span');
+      text.textContent = item.text;
+      text.style.flex = '1';
+
+      itemEl.appendChild(icon);
+      itemEl.appendChild(text);
 
       itemEl.addEventListener('click', () => {
-        selectedIndex = index;
+        state = {
+          ...state,
+          selectedIndex: index,
+        };
         confirmSuggestion();
       });
 
-      suggestLayer.appendChild(itemEl);
+      itemEl.addEventListener('mouseenter', () => {
+        state = {
+          ...state,
+          selectedIndex: index,
+        };
+        renderGhost();
+      });
+
+      popupList.appendChild(itemEl);
     });
+
+    const coords = calculatePopupCoords();
+    if (coords) {
+      popupList.style.left = coords.x + 'px';
+      popupList.style.top = coords.y + 'px';
+      popupList.classList.toggle('above', coords.above);
+      popupList.style.display = 'block';
+    } else {
+      popupList.style.display = 'none';
+    }
+  }
+
+  // Calculate cursor position relative to term pane
+  function calculateCursorCoords() {
+    const term = getActiveTerm?.();
+    if (!term) return null;
+
+    const pane = activeTermPane;
+    if (!pane) return null;
+
+    try {
+      const screenEl = term.element.querySelector('.xterm-screen');
+      if (!screenEl) return null;
+
+      const screenRect = screenEl.getBoundingClientRect();
+      const paneRect = pane.getBoundingClientRect();
+
+      // Cell dimensions
+      const charWidth = screenRect.width / term.cols;
+      const charHeight = screenRect.height / term.rows;
+
+      // Cursor position in cells
+      const cursorX = term.buffer.active.cursorX || 0;
+      const cursorY = term.buffer.active.cursorY || 0;
+
+      // Viewport offset
+      const viewportY = term.buffer.active.baseY || 0;
+      const yOffset = (cursorY - viewportY) * charHeight;
+
+      return {
+        x: cursorX * charWidth,
+        y: yOffset + charHeight,
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Calculate popup list position
+  function calculatePopupCoords() {
+    const term = getActiveTerm?.();
+    if (!term) return null;
+
+    const pane = activeTermPane;
+    if (!pane) return null;
+
+    try {
+      const screenEl = term.element.querySelector('.xterm-screen');
+      if (!screenEl) return null;
+
+      const screenRect = screenEl.getBoundingClientRect();
+      const paneRect = pane.getBoundingClientRect();
+
+      // Cell dimensions
+      const charWidth = screenRect.width / term.cols;
+      const charHeight = screenRect.height / term.rows;
+
+      // Cursor position in cells
+      const cursorX = term.buffer.active.cursorX || 0;
+      const cursorY = term.buffer.active.cursorY || 0;
+
+      // Viewport offset
+      const viewportY = term.buffer.active.baseY || 0;
+      const yOffset = (cursorY - viewportY) * charHeight;
+
+      // Popup height approximation (5 items max: 24px each + gap/padding)
+      const popupHeight = Math.min(state.candidates.length, MAX_POPUP_ITEMS) * 24 + 16;
+
+      // Check if popup would go below screen
+      const yPos = yOffset + charHeight;
+      const spaceBelow = screenRect.height - yPos;
+      const above = spaceBelow < popupHeight;
+
+      return {
+        x: cursorX * charWidth,
+        y: above ? yOffset - popupHeight : yPos,
+        above,
+      };
+    } catch (e) {
+      return null;
+    }
   }
 
   // Confirm selected suggestion
   function confirmSuggestion() {
-    if (selectedIndex < 0 || selectedIndex >= suggestions.length) {
+    if (state.selectedIndex < 0 || state.selectedIndex >= state.candidates.length) {
       return;
     }
 
-    const selected = suggestions[selectedIndex];
-    const remainder = selected.text.slice(buffer.length);
+    const selected = state.candidates[state.selectedIndex];
+    const remainder = window.YamiSuggestViewState.currentGhost(state);
 
-    const term = getActiveTerm?.();
     const activeId = window.YamiTabs?.getActiveId?.() || null;
 
     if (remainder && activeId) {
       window.yamiterm?.write?.(activeId, remainder);
     }
 
-    buffer = selected.text;
+    state = window.YamiSuggestViewState.reset(state);
     closeSuggestions();
   }
 
   // Close suggestions
   function closeSuggestions() {
-    suggestions = [];
-    selectedIndex = -1;
-    if (suggestLayer) {
-      suggestLayer.style.display = 'none';
-      suggestLayer.innerHTML = '';
-    }
+    state = window.YamiSuggestViewState.reset(state);
+    ghostOverlay.style.display = 'none';
+    popupList.style.display = 'none';
+    popupList.innerHTML = '';
     if (debounceTimer) {
       clearTimeout(debounceTimer);
       debounceTimer = null;
     }
   }
 
-  // Called when terminal receives line feed (optional hook from tabs.js)
+  // Hook for terminal line feed (optional)
   function onLineBuffer(terminal) {
-    // Could use this to sync with terminal state, but for now keep it simple
+    // When terminal outputs, close suggestions and reset
+    if (state.candidates.length > 0) {
+      closeSuggestions();
+    }
   }
 
   return {
