@@ -183,6 +183,13 @@ body {
   border-color: var(--accent);
 }
 
+.claude-launch-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  display: block;
+}
+
 /* ==================== Terminals Container ==================== */
 #terminals {
   flex: 1;
@@ -214,10 +221,10 @@ body {
 }
 
 /* ==================== Bloom Effect ==================== */
-.term-pane.bloom-enabled .xterm-screen canvas {
-  filter:
-    drop-shadow(0 0 var(--bloom-blur) var(--accent))
-    drop-shadow(0 0 calc(var(--bloom-blur) * 2) var(--accent));
+.term-pane.bloom-enabled .xterm-rows {
+  text-shadow:
+    0 0 var(--bloom-blur) var(--accent),
+    0 0 calc(var(--bloom-blur) * 2) var(--accent);
 }
 
 .xterm {
@@ -739,10 +746,20 @@ body {
   cursor: pointer;
   font-size: 13px;
   transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .empty-action-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: var(--color-border-highlight);
   color: var(--color-text-primary);
+}
+
+.empty-claude-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: block;
 }

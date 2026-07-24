@@ -191,7 +191,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const emptyClaudeBtn = document.getElementById('empty-claude-btn');
     const emptySettingsBtn = document.getElementById('empty-settings-btn');
     if (emptyNewTabBtn) emptyNewTabBtn.textContent = window.YamiI18n?.t?.('empty.newTab') || 'New Tab';
-    if (emptyClaudeBtn) emptyClaudeBtn.textContent = '🤖 ' + (window.YamiI18n?.t?.('empty.launchClaude') || 'Launch Claude Code');
+    if (emptyClaudeBtn) {
+      const emptyClaudeLabel = emptyClaudeBtn.querySelector('span');
+      if (emptyClaudeLabel) emptyClaudeLabel.textContent = window.YamiI18n?.t?.('empty.launchClaude') || 'Launch Claude Code';
+    }
     if (emptySettingsBtn) emptySettingsBtn.textContent = '⚙ ' + (window.YamiI18n?.t?.('empty.settings') || 'Settings');
   } catch (err) {
     console.warn('[yami-term] empty-state i18n failed:', err);
