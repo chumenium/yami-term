@@ -21,6 +21,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  // (a3) empty-state のアプリ情報表示
+  try {
+    if (window.yamiterm?.getAppInfo) {
+      const info = await window.yamiterm.getAppInfo();
+      const nameEl = document.getElementById('empty-state-name');
+      const versionEl = document.getElementById('empty-state-version');
+      if (nameEl && info.name) nameEl.textContent = info.name;
+      if (versionEl && info.version) versionEl.textContent = `v${info.version}`;
+    }
+  } catch (err) {
+    console.warn('[yami-term] empty-state app info failed:', err);
+  }
+
   // (a2) 起動時の初期テーマ適用
   try {
     if (window.YamiThemes?.getById && typeof window.YamiThemes.getById === 'function') {
@@ -152,5 +165,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } catch (err) {
     console.error('[yami-term] claude-launch-btn wiring failed:', err);
+  }
+
+  // (g) empty-state ボタンのi18nラベル反映
+  try {
+    const emptyNewTabBtn = document.getElementById('empty-new-tab-btn');
+    const emptyClaudeBtn = document.getElementById('empty-claude-btn');
+    const emptySettingsBtn = document.getElementById('empty-settings-btn');
+    if (emptyNewTabBtn) emptyNewTabBtn.textContent = window.YamiI18n?.t?.('empty.newTab') || 'New Tab';
+    if (emptyClaudeBtn) emptyClaudeBtn.textContent = '🤖 ' + (window.YamiI18n?.t?.('empty.launchClaude') || 'Launch Claude Code');
+    if (emptySettingsBtn) emptySettingsBtn.textContent = '⚙ ' + (window.YamiI18n?.t?.('empty.settings') || 'Settings');
+  } catch (err) {
+    console.warn('[yami-term] empty-state i18n failed:', err);
   }
 });

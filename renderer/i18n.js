@@ -17,6 +17,9 @@ const YamiI18nImpl = (() => {
       'settings.scrollback': 'Scrollback Lines',
       'settings.about.version': 'Version',
       'settings.about.author': 'Author',
+      'empty.newTab': 'New Tab',
+      'empty.launchClaude': 'Launch Claude Code',
+      'empty.settings': 'Settings',
     },
     ja: {
       'settings.title': '設定',
@@ -33,6 +36,9 @@ const YamiI18nImpl = (() => {
       'settings.scrollback': 'スクロールバック行数',
       'settings.about.version': 'バージョン',
       'settings.about.author': '作者',
+      'empty.newTab': '新しいタブ',
+      'empty.launchClaude': 'Claude Codeを起動',
+      'empty.settings': '設定',
     },
   };
 

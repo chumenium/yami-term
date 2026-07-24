@@ -13,6 +13,23 @@ window.YamiTabs = (() => {
     if (newTabBtn) {
       newTabBtn.addEventListener('click', newTab);
     }
+
+    const emptyNewTabBtn = document.getElementById('empty-new-tab-btn');
+    if (emptyNewTabBtn) {
+      emptyNewTabBtn.addEventListener('click', newTab);
+    }
+
+    const emptyClaudeBtn = document.getElementById('empty-claude-btn');
+    if (emptyClaudeBtn) {
+      emptyClaudeBtn.addEventListener('click', () => newTabWithCommand('claude'));
+    }
+
+    const emptySettingsBtn = document.getElementById('empty-settings-btn');
+    if (emptySettingsBtn) {
+      emptySettingsBtn.addEventListener('click', () => {
+        document.dispatchEvent(new CustomEvent('yami:open-settings'));
+      });
+    }
   }
 
   async function newTab() {
@@ -167,6 +184,11 @@ window.YamiTabs = (() => {
       const id = pane.id.replace('pane-', '');
       pane.style.display = id === state.activeId ? 'block' : 'none';
     });
+
+    const emptyState = document.getElementById('empty-state');
+    if (emptyState) {
+      emptyState.classList.toggle('hidden', state.tabs.length > 0);
+    }
   }
 
   window.yamiterm.onData((id, data) => {

@@ -1,6 +1,6 @@
 {
   "name": "yami-term",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "🖤 Liquid Glass terminal emulator for macOS — tabs, GUI settings, zsh-history suggestions",
   "main": "main.js",
   "author": "chumenium",

@@ -17,7 +17,18 @@
     <button id="settings-btn" class="settings-btn">⚙</button>
   </div>
 
-  <div id="terminals" class="terminals"></div>
+  <div id="terminals" class="terminals">
+    <div id="empty-state" class="empty-state hidden">
+      <img src="icon.svg" class="empty-state-icon" alt="yami-term">
+      <div class="empty-state-name" id="empty-state-name">yami-term</div>
+      <div class="empty-state-version" id="empty-state-version"></div>
+      <div class="empty-state-actions">
+        <button id="empty-new-tab-btn" class="empty-action-btn">新しいタブ</button>
+        <button id="empty-claude-btn" class="empty-action-btn">🤖 Claude Code</button>
+        <button id="empty-settings-btn" class="empty-action-btn">⚙ 設定</button>
+      </div>
+    </div>
+  </div>
 
   <div id="settings-modal" class="settings-modal hidden">
     <!-- settings.js が構築する -->
