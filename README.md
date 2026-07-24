@@ -1,0 +1,136 @@
+# yami-term 🖤✨
+
+macOS向けの美しいターミナルエミュレータ。Liquid Glass UIと闇かわダークテーマで、ターミナルをもっと素敵に。
+
+<!-- TODO: screenshot -->
+
+## ✨ 特徴
+
+- **Liquid Glass UI** — macOS vibrancy を活かしたガラス表現。黒×ピンク (#ff79c6) ×紫 (#bd93f9) の闇かわダークテーマでモダンな雰囲気を実現
+- **マルチタブ** — 複数のシェルセッションをタブで管理。Cmd+T で新規タブ、Cmd+W で閉じる、Cmd+1-9 でタブ間移動
+- **GUI設定モーダル** — Cmd+, で設定パネルを開く。フォント・透明度・アクセント色・カーソル点滅・補完の ON/OFF をリアルタイムで調整。設定は `~/.yami-term.json` に自動保存
+- **コマンド補完** 🚀 — zsh 履歴と PATH 内のコマンドから候補を自動抽出。ゴーストテキストとドロップダウンで入力をアシスト。Tab または → キーで確定、Esc で閉じる
+
+## 📦 インストール
+
+### macOS (Apple Silicon / Intel)
+
+1. [Releases ページ](https://github.com/chumenium/yami-term/releases) から以下のいずれかをダウンロード:
+   - **Apple Silicon**: `yami-term-<version>-arm64.dmg`
+   - **Intel Mac**: `yami-term-<version>-x64.dmg`
+2. DMG ファイルを開いて、**yami-term.app** を Applications フォルダにドラッグ
+3. 初回起動時、"未認識の開発元" エラーが表示される場合:
+   - アプリを右クリック → **開く**
+   - それでもダメなら、ターミナルで以下を実行:
+     ```bash
+     xattr -cr /Applications/yami-term.app
+     ```
+
+> **注:** yami-term は未署名アプリです。Apple の Developer Program での署名・公証は今後の検討です。  
+> Releases に x64 が無い場合は、ソースからビルドしてください ([ビルド手順](#-ソースからビルド))
+
+## ⌨️ ショートカット一覧
+
+| キー | 機能 |
+|------|------|
+| **Cmd+T** | 新規タブを開く |
+| **Cmd+W** | 現在のタブを閉じる |
+| **Cmd+1~9** | 対応するタブ番号へ切り替え |
+| **Cmd+,** | 設定パネルを開く |
+
+## ⚙️ 設定
+
+### GUI で設定
+
+Cmd+, を押すと設定ウィンドウが開きます。以下の項目が調整可能です:
+
+- **フォント** — Menlo、Monaco、Courier New など任意のモノスペースフォント
+- **フォントサイズ** — 8pt ～ 28pt (デフォルト: 14pt)
+- **透明度** — 0% ～ 100% (デフォルト: 80%)
+- **アクセント色** — ピンク / 紫 / その他カラーピッカーで自由選択
+- **カーソル点滅** — ON/OFF
+- **補完機能** — ON/OFF
+
+変更内容はリアルタイムで反映され、`~/.yami-term.json` に自動保存されます。
+
+### 設定ファイル (`~/.yami-term.json`)
+
+手動編集も可能です:
+
+```json
+{
+  "fontSize": 14,
+  "fontFamily": "Menlo",
+  "cursorBlink": true,
+  "opacity": 0.8,
+  "accent": "#ff79c6",
+  "shell": "/bin/zsh",
+  "suggest": true
+}
+```
+
+| キー | 説明 | デフォルト |
+|------|------|---------|
+| `fontSize` | フォントサイズ (pt) | 14 |
+| `fontFamily` | フォント名 | Menlo |
+| `cursorBlink` | カーソル点滅 | true |
+| `opacity` | ウィンドウ透明度 (0-1) | 0.8 |
+| `accent` | アクセント色 (16進カラーコード) | #ff79c6 |
+| `shell` | デフォルトシェル | /bin/zsh |
+| `suggest` | コマンド補完 | true |
+
+## 💡 補完機能の使い方
+
+yami-term のコマンド補完は以下のソースから候補を提案します:
+
+1. **zsh 履歴** — 過去に実行したコマンド (リーセンシー優先)
+2. **PATH コマンド** ⚡ — `$PATH` に含まれる実行可能ファイル
+
+### 操作方法
+
+- **ゴーストテキスト表示** — 入力中に候補が自動表示されます
+- **ドロップダウンで選択** — 複数候補がある場合は↑↓キーで選択
+- **確定** — Tab キーまたは → キーを押す
+- **キャンセル** — Esc キーで補完を閉じる
+
+補完は `~/.yami-term.json` の `"suggest": false` で無効化できます。
+
+## 🛠 ソースからビルド
+
+### 前提条件
+
+- Node.js 20 以上
+- Xcode Command Line Tools (`xcode-select --install`)
+- npm (Node.js に付属)
+
+### ビルド手順
+
+```bash
+# リポジトリをクローン
+git clone https://github.com/chumenium/yami-term.git
+cd yami-term
+
+# 依存パッケージをインストール
+npm install
+
+# 開発モードで起動
+npm start
+
+# 配布用 dmg を生成 (dist/ ディレクトリに出力)
+npm run dist
+```
+
+ビルド後、dist/ フォルダに `yami-term-<version>-arm64.dmg` が出力されます。
+
+## 📝 既知の制限
+
+- **未署名アプリ** — Apple の開発者署名がないため、初回起動時に警告が表示されます
+- **公証なし** — Notarization (Appleの公証サービス) を経由していません
+- **補完の行追跡** — 複数行入力時の補完ロジックは簡易実装です (完全なマルチラインサポートは今後)
+- **macOS 専用** — Electron のネイティブ API (vibrancy) を使用しているため、Windows・Linux 対応予定はありません
+
+## 📄 License
+
+MIT License &copy; 2026 chumenium
+
+詳細は [LICENSE](./LICENSE) ファイルを参照してください。

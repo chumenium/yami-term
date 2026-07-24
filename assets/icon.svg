@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d0d12;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a1626;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="strokeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff79c6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#bd93f9;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background with rounded corners -->
+  <rect x="32" y="32" width="960" height="960" rx="180" ry="180" fill="url(#bgGradient)"/>
+
+  <!-- Border with gradient stroke -->
+  <rect x="32" y="32" width="960" height="960" rx="180" ry="180" fill="none" stroke="url(#strokeGradient)" stroke-width="2" filter="url(#glow)"/>
+
+  <!-- Terminal prompt text: ❯_ -->
+  <text x="512" y="600" font-family="'Monaco', 'Menlo', 'Courier New', monospace" font-size="340" font-weight="bold" fill="#ff79c6" text-anchor="middle" dominant-baseline="middle" filter="url(#glow)">❯</text>
+
+  <!-- Cursor (underscore replacement) -->
+  <rect x="535" y="560" width="35" height="60" fill="#bd93f9" filter="url(#glow)"/>
+</svg>

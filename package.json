@@ -1,7 +1,15 @@
 {
   "name": "yami-term",
   "version": "0.1.0",
+  "description": "🖤 Liquid Glass terminal emulator for macOS — tabs, GUI settings, zsh-history suggestions",
   "main": "main.js",
+  "author": "chumenium",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chumenium/yami-term.git"
+  },
+  "homepage": "https://github.com/chumenium/yami-term",
   "dependencies": {
     "@xterm/xterm": "^5.3.0",
     "@xterm/addon-fit": "^0.11.0",
@@ -10,11 +18,47 @@
   },
   "devDependencies": {
     "electron": "^30.0.0",
-    "@electron/rebuild": "^4.2.0"
+    "@electron/rebuild": "^4.2.0",
+    "electron-builder": "^26.0.12"
   },
   "scripts": {
     "start": "electron .",
     "postinstall": "electron-rebuild -f -w node-pty",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "dist": "electron-builder --mac",
+    "dist:arm64": "electron-builder --mac --arm64",
+    "verify:dist": "bash scripts/verify-dist.sh"
+  },
+  "build": {
+    "appId": "com.chumenium.yamiterm",
+    "productName": "yami-term",
+    "directories": {
+      "output": "dist"
+    },
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "asarUnpack": [
+      "**/node_modules/node-pty/**"
+    ],
+    "files": [
+      "main.js",
+      "preload.js",
+      "main/**/*",
+      "renderer/**/*",
+      "!tests/**",
+      "!scripts/**",
+      "!assets/**",
+      "!dist/**",
+      "!.github/**",
+      "!*.md"
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.developer-tools",
+      "icon": "assets/icon.icns",
+      "darkModeSupport": true
+    }
   }
 }
