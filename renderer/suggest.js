@@ -145,9 +145,19 @@ window.YamiSuggest = (() => {
         closeSuggestions();
         return;
       } else if (key === 'ArrowLeft') {
-        closeSuggestions();
+        // closeSuggestions()はreset()を呼びbuffer/cursorPosごと消してしまうため使わない。
+        // buffer/cursorPosは保持したままポップアップ/ゴーストだけ隠す。
         state = window.YamiSuggestViewState.moveCursor(state, -1);
+        dismissSuggestionsKeepBuffer();
         // preventDefault/stopPropagationは呼ばない(実ターミナル側のカーソル移動を妨げない)
+        return;
+      } else if (key === 'Home') {
+        state = window.YamiSuggestViewState.moveCursor(state, -state.cursorPos);
+        dismissSuggestionsKeepBuffer();
+        return;
+      } else if (key === 'End') {
+        state = window.YamiSuggestViewState.moveCursor(state, state.buffer.length - state.cursorPos);
+        dismissSuggestionsKeepBuffer();
         return;
       }
     }
@@ -421,6 +431,19 @@ window.YamiSuggest = (() => {
 
     state = window.YamiSuggestViewState.reset(state);
     closeSuggestions();
+  }
+
+  // Hide suggestion UI without resetting buffer/cursorPos (candidates.length>0のまま
+  // カーソル移動された時用。closeSuggestions()のreset()はbuffer/cursorPosも消してしまうため使えない)
+  function dismissSuggestionsKeepBuffer() {
+    state = { ...state, candidates: [], selectedIndex: -1 };
+    ghostOverlay.style.display = 'none';
+    popupList.style.display = 'none';
+    popupList.innerHTML = '';
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
   }
 
   // Close suggestions
