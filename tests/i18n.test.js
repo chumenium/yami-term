@@ -23,7 +23,7 @@ test('i18n.js - en/jaのキー数が3以上ある', async (t) => {
 
 test('i18n.js - 主要キー(settings.title, empty.newTab等)がen/ja両方に存在し空文字列でない', async (t) => {
   const i18n = require('../renderer/i18n.js');
-  const requiredKeys = ['settings.title', 'empty.newTab', 'empty.launchClaude', 'empty.settings'];
+  const requiredKeys = ['settings.title', 'empty.newTab', 'empty.settings'];
 
   for (const key of requiredKeys) {
     assert.ok(key in i18n.dict.en, `en に ${key} が存在すべき`);

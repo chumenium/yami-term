@@ -13,7 +13,7 @@
     <div class="drag-region"></div>
     <div id="tab-bar" class="tab-bar"></div>
     <button id="new-tab-btn" class="new-tab-btn">+</button>
-    <button id="claude-launch-btn" class="claude-launch-btn" title="Claude Codeを起動"><img src="claude-icon.png" alt="Claude Codeを起動" class="claude-launch-icon"></button>
+    <div id="launcher-buttons" class="launcher-buttons"></div>
     <button id="settings-btn" class="settings-btn">⚙</button>
   </div>
 
@@ -24,7 +24,7 @@
       <div class="empty-state-version" id="empty-state-version"></div>
       <div class="empty-state-actions">
         <button id="empty-new-tab-btn" class="empty-action-btn">新しいタブ</button>
-        <button id="empty-claude-btn" class="empty-action-btn"><img src="claude-icon.png" alt="" class="empty-claude-icon"><span>Claude Code</span></button>
+        <div id="empty-launcher-buttons" class="empty-launcher-buttons"></div>
         <button id="empty-settings-btn" class="empty-action-btn">⚙ 設定</button>
       </div>
     </div>
@@ -32,6 +32,10 @@
 
   <div id="settings-modal" class="settings-modal hidden">
     <!-- settings.js が構築する -->
+  </div>
+
+  <div id="command-palette" class="command-palette hidden">
+    <!-- command-palette.js が構築する -->
   </div>
 
   <div id="suggest-layer" class="suggest-layer" style="display: none;">
@@ -46,6 +50,8 @@
   <script src="themes.js"></script>
   <script src="tabs-state.js"></script>
   <script src="tabs.js"></script>
+  <script src="launchers.js"></script>
+  <script src="command-palette.js"></script>
   <script src="suggest-view-state.js"></script>
   <script src="suggest.js"></script>
   <script src="settings.js"></script>

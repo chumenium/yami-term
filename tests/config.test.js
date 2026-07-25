@@ -279,3 +279,99 @@ test('config.js - set()でbloomIntensityを8に設定して反映', async (t) =>
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('config.js - DEFAULTSにlaunchersのビルトインプリセット(claude/finder)が含まれること', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    const defaults = config.DEFAULTS;
+    assert.ok(Array.isArray(defaults.launchers));
+    assert.strictEqual(defaults.launchers.length, 2);
+
+    const claude = defaults.launchers.find(l => l.id === 'claude');
+    assert.ok(claude);
+    assert.strictEqual(claude.type, 'command');
+    assert.strictEqual(claude.command, 'claude');
+    assert.strictEqual(claude.builtin, true);
+
+    const finder = defaults.launchers.find(l => l.id === 'finder');
+    assert.ok(finder);
+    assert.strictEqual(finder.type, 'finder');
+    assert.strictEqual(finder.builtin, true);
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('config.js - set()でカスタムlauncherを追加して反映', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    const customLauncher = { id: 'custom-1', label: 'htop', type: 'command', command: 'htop', builtin: false };
+    config.set({ launchers: [...config.DEFAULTS.launchers, customLauncher] });
+
+    const result = config.get();
+    assert.strictEqual(result.launchers.length, 3);
+    assert.deepStrictEqual(result.launchers[2], customLauncher);
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('config.js - set()でlaunchersに不正な要素があればフィルタされる', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    const malformed = { id: 'bad', label: 'Bad', type: 'command' }; // command欠落
+    const valid = { id: 'ok', label: 'OK', type: 'command', command: 'ok' };
+    config.set({ launchers: [malformed, valid] });
+
+    const result = config.get();
+    assert.strictEqual(result.launchers.length, 1);
+    assert.strictEqual(result.launchers[0].id, 'ok');
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('config.js - set()でlaunchersに配列以外を渡すと無視される', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    config.set({ launchers: 'not-an-array' });
+
+    const result = config.get();
+    // 元のDEFAULTS(ビルトイン2件)のまま維持される
+    assert.strictEqual(result.launchers.length, 2);
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

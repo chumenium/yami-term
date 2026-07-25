@@ -62,6 +62,11 @@ class PtyManager extends EventEmitter {
     }
   }
 
+  getPid(id) {
+    const record = this.ptys.get(id);
+    return record ? record.process.pid : null;
+  }
+
   write(id, data) {
     const record = this.ptys.get(id);
     if (!record) {

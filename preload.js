@@ -54,4 +54,8 @@ contextBridge.exposeInMainWorld('yamiterm', {
   reportError(errorInfo) {
     ipcRenderer.send('renderer:error', errorInfo);
   },
+
+  async revealInFinder(id) {
+    return ipcRenderer.invoke('term:revealInFinder', { id });
+  },
 });

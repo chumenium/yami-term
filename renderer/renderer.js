@@ -193,29 +193,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('[yami-term] init failed: YamiShortcuts', err);
   }
 
-  // (f) Claude Code起動ボタンの配線
+  // (f) YamiLaunchers.init() / YamiCommandPalette.init()
   try {
-    const claudeLaunchBtn = document.getElementById('claude-launch-btn');
-    if (claudeLaunchBtn && window.YamiTabs?.newTabWithCommand && typeof window.YamiTabs.newTabWithCommand === 'function') {
-      claudeLaunchBtn.addEventListener('click', () => {
-        window.YamiTabs.newTabWithCommand('claude');
-      });
-      console.log('[yami-term] claude-launch-btn wired');
+    if (window.YamiLaunchers && typeof window.YamiLaunchers.init === 'function') {
+      await window.YamiLaunchers.init();
+      console.log('[yami-term] YamiLaunchers.init completed');
+    }
+    if (window.YamiCommandPalette && typeof window.YamiCommandPalette.init === 'function') {
+      window.YamiCommandPalette.init();
+      console.log('[yami-term] YamiCommandPalette.init completed');
     }
   } catch (err) {
-    console.error('[yami-term] claude-launch-btn wiring failed:', err);
+    console.error('[yami-term] init failed: YamiLaunchers/YamiCommandPalette', err);
   }
 
   // (g) empty-state ボタンのi18nラベル反映
   try {
     const emptyNewTabBtn = document.getElementById('empty-new-tab-btn');
-    const emptyClaudeBtn = document.getElementById('empty-claude-btn');
     const emptySettingsBtn = document.getElementById('empty-settings-btn');
     if (emptyNewTabBtn) emptyNewTabBtn.textContent = window.YamiI18n?.t?.('empty.newTab') || 'New Tab';
-    if (emptyClaudeBtn) {
-      const emptyClaudeLabel = emptyClaudeBtn.querySelector('span');
-      if (emptyClaudeLabel) emptyClaudeLabel.textContent = window.YamiI18n?.t?.('empty.launchClaude') || 'Launch Claude Code';
-    }
     if (emptySettingsBtn) emptySettingsBtn.textContent = '⚙ ' + (window.YamiI18n?.t?.('empty.settings') || 'Settings');
   } catch (err) {
     console.warn('[yami-term] empty-state i18n failed:', err);

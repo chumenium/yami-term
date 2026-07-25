@@ -10,6 +10,7 @@ class FakePtyProcess extends EventEmitter {
     this.writeCalls = [];
     this.resizeCalls = [];
     this.killCalled = false;
+    this.pid = 12345;
   }
 
   write(data) {
@@ -210,6 +211,21 @@ test('PtyManager - constructor()でshellとenvを設定', async (t) => {
 
   assert.strictEqual(spawnFn.spawnedProcesses[0].shell, '/bin/bash');
   assert.deepStrictEqual(spawnFn.spawnedProcesses[0].options.env, customEnv);
+});
+
+test('PtyManager - getPid()が対象ptyのpidを返す', async (t) => {
+  const spawnFn = createFakeSpawnFn();
+  const manager = new PtyManager({ spawnFn, shell: '/bin/zsh' });
+
+  const id = manager.create({ cols: 80, rows: 24 });
+  assert.strictEqual(manager.getPid(id), 12345);
+});
+
+test('PtyManager - 存在しないidへのgetPid()はnullを返す', async (t) => {
+  const spawnFn = createFakeSpawnFn();
+  const manager = new PtyManager({ spawnFn, shell: '/bin/zsh' });
+
+  assert.strictEqual(manager.getPid('nonexistent-id'), null);
 });
 
 test('PtyManager - dispose()後にwrite/resizeは無視される', async (t) => {

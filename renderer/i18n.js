@@ -20,8 +20,11 @@ const YamiI18nImpl = (() => {
       'settings.about.version': 'Version',
       'settings.about.author': 'Author',
       'empty.newTab': 'New Tab',
-      'empty.launchClaude': 'Launch Claude Code',
       'empty.settings': 'Settings',
+      'settings.launchers.title': 'Launchers',
+      'settings.launchers.labelPlaceholder': 'Label',
+      'settings.launchers.commandPlaceholder': 'Command',
+      'palette.placeholder': 'Search a command to run…',
     },
     ja: {
       'settings.title': '設定',
@@ -41,8 +44,11 @@ const YamiI18nImpl = (() => {
       'settings.about.version': 'バージョン',
       'settings.about.author': '作者',
       'empty.newTab': '新しいタブ',
-      'empty.launchClaude': 'Claude Codeを起動',
       'empty.settings': '設定',
+      'settings.launchers.title': 'ランチャー',
+      'settings.launchers.labelPlaceholder': 'ラベル',
+      'settings.launchers.commandPlaceholder': 'コマンド',
+      'palette.placeholder': 'コマンドを検索して起動…',
     },
   };
 

@@ -1,6 +1,7 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { execFileSync } = require('child_process');
 const PtyManager = require('./main/pty-manager');
 const config = require('./main/config');
 const pkg = require('./package.json');
@@ -146,6 +147,34 @@ function setupIpcChannels() {
       author: pkg.author,
       homepage: pkg.homepage || '',
     };
+  });
+
+  // term:revealInFinder - open Finder at the pty's shell cwd
+  ipcMain.handle('term:revealInFinder', async (event, payload) => {
+    const { id } = payload || {};
+    const pid = ptyManager.getPid(id);
+    if (!pid) {
+      return { success: false, error: 'no such terminal' };
+    }
+
+    let cwd;
+    try {
+      const output = execFileSync('lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-Fn'], { encoding: 'utf8' });
+      const line = output.split('\n').find(l => l.startsWith('n'));
+      cwd = line ? line.slice(1) : null;
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+
+    if (!cwd) {
+      return { success: false, error: 'cwd not found' };
+    }
+
+    const openError = await shell.openPath(cwd);
+    if (openError) {
+      return { success: false, error: openError };
+    }
+    return { success: true, cwd };
   });
 
   // renderer:error - log renderer errors to file

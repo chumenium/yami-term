@@ -55,6 +55,13 @@ window.YamiShortcuts = (() => {
       document.dispatchEvent(new CustomEvent('yami:open-settings'));
       return;
     }
+
+    // Cmd+K: コマンドパレットを開く
+    if (e.key === 'k' || e.key === 'K') {
+      e.preventDefault();
+      document.dispatchEvent(new CustomEvent('yami:open-command-palette'));
+      return;
+    }
   }
 
   return {

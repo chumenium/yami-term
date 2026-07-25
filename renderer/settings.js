@@ -290,6 +290,63 @@ window.YamiSettings = (() => {
       }
     });
 
+    // ランチャー管理セクション追加
+    const launcherDivider = document.createElement('div');
+    launcherDivider.className = 'settings-divider';
+    card.appendChild(launcherDivider);
+
+    const launcherSection = document.createElement('div');
+    launcherSection.className = 'settings-launcher-section';
+
+    const launcherTitle = document.createElement('div');
+    launcherTitle.className = 'settings-launcher-title';
+    launcherTitle.textContent = window.YamiI18n?.t?.('settings.launchers.title') || 'Launchers';
+    launcherSection.appendChild(launcherTitle);
+
+    const launcherList = document.createElement('div');
+    launcherList.className = 'settings-launcher-list';
+    launcherList.id = 'settings-launcher-list';
+    launcherSection.appendChild(launcherList);
+
+    const addForm = document.createElement('div');
+    addForm.className = 'settings-launcher-add-form';
+
+    const labelInput = document.createElement('input');
+    labelInput.type = 'text';
+    labelInput.className = 'settings-input settings-launcher-label-input';
+    labelInput.placeholder = window.YamiI18n?.t?.('settings.launchers.labelPlaceholder') || 'Label';
+
+    const commandInput = document.createElement('input');
+    commandInput.type = 'text';
+    commandInput.className = 'settings-input settings-launcher-command-input';
+    commandInput.placeholder = window.YamiI18n?.t?.('settings.launchers.commandPlaceholder') || 'Command';
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'settings-launcher-add-btn';
+    addBtn.textContent = '+';
+    addBtn.addEventListener('click', async () => {
+      const label = labelInput.value.trim();
+      const command = commandInput.value.trim();
+      if (!label || !command) return;
+
+      const config = await window.yamiterm.getConfig();
+      const current = Array.isArray(config.launchers) ? config.launchers : [];
+      const newLauncher = { id: `custom-${Date.now()}`, label, type: 'command', command, builtin: false };
+      const updated = [...current, newLauncher];
+
+      await window.yamiterm.setConfig({ launchers: updated });
+      labelInput.value = '';
+      commandInput.value = '';
+      renderLauncherList(updated);
+    });
+
+    addForm.appendChild(labelInput);
+    addForm.appendChild(commandInput);
+    addForm.appendChild(addBtn);
+    launcherSection.appendChild(addForm);
+
+    card.appendChild(launcherSection);
+
     // Aboutセクション追加
     const aboutSection = document.createElement('div');
     aboutSection.className = 'settings-about';
@@ -322,9 +379,43 @@ window.YamiSettings = (() => {
     modal.appendChild(card);
   }
 
+  function renderLauncherList(launchers) {
+    const listEl = document.getElementById('settings-launcher-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = '';
+    launchers.forEach(launcher => {
+      const item = document.createElement('div');
+      item.className = 'settings-launcher-item';
+
+      const label = document.createElement('span');
+      label.className = 'settings-launcher-item-label';
+      label.textContent = launcher.label + (launcher.type === 'command' ? ` (${launcher.command})` : '');
+      item.appendChild(label);
+
+      if (!launcher.builtin) {
+        const delBtn = document.createElement('button');
+        delBtn.className = 'settings-launcher-delete-btn';
+        delBtn.textContent = '×';
+        delBtn.addEventListener('click', async () => {
+          const config = await window.yamiterm.getConfig();
+          const current = Array.isArray(config.launchers) ? config.launchers : [];
+          const updated = current.filter(l => l.id !== launcher.id);
+          await window.yamiterm.setConfig({ launchers: updated });
+          renderLauncherList(updated);
+        });
+        item.appendChild(delBtn);
+      }
+
+      listEl.appendChild(item);
+    });
+  }
+
   async function loadSettings() {
     try {
       const config = await window.yamiterm.getConfig();
+
+      renderLauncherList(Array.isArray(config.launchers) ? config.launchers : []);
 
       SETTINGS_SCHEMA.forEach(schema => {
         const value = config[schema.key] !== undefined ? config[schema.key] : schema.default;

@@ -15,6 +15,10 @@ const DEFAULTS = {
   scrollback: 1000,
   bloomEnabled: false,
   bloomIntensity: 4,
+  launchers: [
+    { id: 'claude', label: 'Claude Code', type: 'command', command: 'claude', icon: 'claude-icon.png', builtin: true },
+    { id: 'finder', label: 'Finder', type: 'finder', icon: null, builtin: true },
+  ],
 };
 
 const CONFIG_FILE = path.join(process.env.HOME, '.yami-term.json');
@@ -46,7 +50,7 @@ function set(partial) {
   }
 
   // Whitelist allowed keys
-  const allowedKeys = ['fontSize', 'fontFamily', 'cursorBlink', 'opacity', 'accent', 'shell', 'suggest', 'theme', 'letterSpacing', 'lineHeight', 'scrollback', 'bloomEnabled', 'bloomIntensity'];
+  const allowedKeys = ['fontSize', 'fontFamily', 'cursorBlink', 'opacity', 'accent', 'shell', 'suggest', 'theme', 'letterSpacing', 'lineHeight', 'scrollback', 'bloomEnabled', 'bloomIntensity', 'launchers'];
   const filtered = {};
 
   for (const key of allowedKeys) {
@@ -56,6 +60,15 @@ function set(partial) {
         const shell = partial[key];
         if (typeof shell === 'string' && isShellAllowed(shell)) {
           filtered[key] = shell;
+        }
+      } else if (key === 'launchers') {
+        // Validate launchers: must be an array of well-formed entries
+        const launchers = partial[key];
+        if (Array.isArray(launchers)) {
+          filtered[key] = launchers.filter(l =>
+            l && typeof l.id === 'string' && typeof l.label === 'string' && typeof l.type === 'string' &&
+            (l.type !== 'command' || typeof l.command === 'string')
+          );
         }
       } else {
         filtered[key] = partial[key];

@@ -19,11 +19,6 @@ window.YamiTabs = (() => {
       emptyNewTabBtn.addEventListener('click', newTab);
     }
 
-    const emptyClaudeBtn = document.getElementById('empty-claude-btn');
-    if (emptyClaudeBtn) {
-      emptyClaudeBtn.addEventListener('click', () => newTabWithCommand('claude'));
-    }
-
     const emptySettingsBtn = document.getElementById('empty-settings-btn');
     if (emptySettingsBtn) {
       emptySettingsBtn.addEventListener('click', () => {
