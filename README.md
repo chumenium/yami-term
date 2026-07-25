@@ -26,7 +26,7 @@ macOS向けの美しいターミナルエミュレータ。Liquid Glass UIとダ
      xattr -cr /Applications/yami-term.app
      ```
 
-> **注:** yami-term は未署名アプリです。Apple の Developer Program での署名・公証は今後の検討です。  
+> **注:** yami-term は Apple の Developer Program での正式な署名・公証を行っていません。代わりに ad-hoc 署名を施しており、macOS Gatekeeper のセキュリティ警告を回避する対応が可能です（詳細は [トラブルシューティング](#-トラブルシューティング) を参照）。  
 > Releases に x64 が無い場合は、ソースからビルドしてください ([ビルド手順](#-ソースからビルド))
 
 ## ⌨️ ショートカット一覧
@@ -133,9 +133,34 @@ npm run dist
 
 ビルド後、dist/ フォルダに `yami-term-<version>-arm64.dmg` が出力されます。
 
+## 🔧 トラブルシューティング
+
+### "yami-term"は壊れているため、開けません / 開発元を確認できません
+
+macOS Gatekeeper がセキュリティ警告を表示する場合があります。以下の方法で解決できます。
+
+**方法 1: Finder から開く**
+
+1. **Finder** を開いて Applications フォルダに移動
+2. **yami-term.app** を **右クリック**（または Control キーを押しながらクリック）
+3. メニューから **「開く」** を選択
+4. 確認ダイアログで **「開く」** をクリック
+
+**方法 2: ターミナルで属性を削除**
+
+上記の方法で解決しない場合、ターミナルで以下を実行してください:
+
+```bash
+xattr -cr /Applications/yami-term.app
+```
+
+**なぜこれが必要？**
+
+yami-term は Apple Developer Program での正式なコード署名・公証を行っていません。代わりに ad-hoc 署名を施しており、macOS の Gatekeeper が「信頼できない開発元」として初回起動時に警告を表示します。上記の手順により、システムレベルでこのアプリを信頼できるものとしてマークできます。
+
 ## 📝 既知の制限
 
-- **未署名アプリ** — Apple の開発者署名がないため、初回起動時に警告が表示されます
+- **Ad-hoc 署名のみ** — Apple の Developer Program による正式な署名ではなく ad-hoc 署名のため、初回起動時に Gatekeeper の警告が表示されます
 - **公証なし** — Notarization (Appleの公証サービス) を経由していません
 - **補完の行追跡** — 複数行入力時の補完ロジックは簡易実装です。インラインゴースト・ミニリストは現在行のみ対応
 - **macOS 専用** — Electron のネイティブ API (vibrancy) を使用しているため、Windows・Linux 対応予定はありません

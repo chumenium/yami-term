@@ -30,6 +30,8 @@ jobs:
 
       - run: npm ci
         shell: bash
+        env:
+          npm_config_arch: ${{ matrix.arch }}
 
       - run: npx electron-builder --mac --${{ matrix.arch }} --publish never
         shell: bash
