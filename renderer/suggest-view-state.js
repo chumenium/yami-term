@@ -9,14 +9,17 @@ function createState() {
     selectedIndex: -1,
     candidates: [],
     buffer: '',
+    cursorPos: 0,
   };
 }
 
-function setCandidates(state, list, buffer) {
+function setCandidates(state, list, buffer, cursorPos = (buffer ? buffer.length : 0)) {
+  const newBuffer = buffer || '';
   return {
     ...state,
     candidates: Array.isArray(list) ? list : [],
-    buffer: buffer || '',
+    buffer: newBuffer,
+    cursorPos,
     selectedIndex: (list && list.length > 0) ? 0 : -1,
   };
 }
@@ -34,6 +37,10 @@ function moveSelection(state, direction) {
 }
 
 function currentGhost(state) {
+  // Do not show ghost text if cursor is not at the end of buffer
+  if (state.cursorPos !== state.buffer.length) {
+    return '';
+  }
   if (state.selectedIndex < 0 || state.selectedIndex >= state.candidates.length) {
     return '';
   }
@@ -50,6 +57,49 @@ function currentGhost(state) {
   return '';
 }
 
+function insertAt(state, char) {
+  const before = state.buffer.slice(0, state.cursorPos);
+  const after = state.buffer.slice(state.cursorPos);
+  return {
+    ...state,
+    buffer: before + char + after,
+    cursorPos: state.cursorPos + 1,
+  };
+}
+
+function deleteBefore(state) {
+  if (state.cursorPos <= 0) {
+    return state;
+  }
+  const before = state.buffer.slice(0, state.cursorPos - 1);
+  const after = state.buffer.slice(state.cursorPos);
+  return {
+    ...state,
+    buffer: before + after,
+    cursorPos: state.cursorPos - 1,
+  };
+}
+
+function deleteAt(state) {
+  if (state.cursorPos >= state.buffer.length) {
+    return state;
+  }
+  const before = state.buffer.slice(0, state.cursorPos);
+  const after = state.buffer.slice(state.cursorPos + 1);
+  return {
+    ...state,
+    buffer: before + after,
+  };
+}
+
+function moveCursor(state, delta) {
+  const newCursorPos = Math.max(0, Math.min(state.cursorPos + delta, state.buffer.length));
+  return {
+    ...state,
+    cursorPos: newCursorPos,
+  };
+}
+
 function reset(state) {
   return createState();
 }
@@ -61,6 +111,10 @@ if (typeof module !== 'undefined' && module.exports) {
     setCandidates,
     moveSelection,
     currentGhost,
+    insertAt,
+    deleteBefore,
+    deleteAt,
+    moveCursor,
     reset,
   };
 }
@@ -72,6 +126,10 @@ if (typeof window !== 'undefined') {
     setCandidates,
     moveSelection,
     currentGhost,
+    insertAt,
+    deleteBefore,
+    deleteAt,
+    moveCursor,
     reset,
   };
 }

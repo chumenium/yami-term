@@ -144,6 +144,11 @@ window.YamiSuggest = (() => {
         e.stopPropagation();
         closeSuggestions();
         return;
+      } else if (key === 'ArrowLeft') {
+        closeSuggestions();
+        state = window.YamiSuggestViewState.moveCursor(state, -1);
+        // preventDefault/stopPropagationは呼ばない(実ターミナル側のカーソル移動を妨げない)
+        return;
       }
     }
 
@@ -152,22 +157,29 @@ window.YamiSuggest = (() => {
       state = window.YamiSuggestViewState.reset(state);
       closeSuggestions();
     } else if (key === 'Backspace') {
-      if (state.buffer.length > 0) {
-        state = {
-          ...state,
-          buffer: state.buffer.slice(0, -1),
-        };
-        updateSuggestions();
-      }
+      state = window.YamiSuggestViewState.deleteBefore(state);
+      updateSuggestions();
+    } else if (key === 'Delete') {
+      state = window.YamiSuggestViewState.deleteAt(state);
+      updateSuggestions();
     } else if (e.ctrlKey && code === 'KeyC') {
       state = window.YamiSuggestViewState.reset(state);
       closeSuggestions();
+    } else if (key === 'ArrowLeft' && state.candidates.length === 0) {
+      // Cursor movement when no suggestions shown
+      state = window.YamiSuggestViewState.moveCursor(state, -1);
+    } else if (key === 'ArrowRight' && state.candidates.length === 0) {
+      // Cursor movement when no suggestions shown
+      state = window.YamiSuggestViewState.moveCursor(state, 1);
+    } else if (key === 'Home' && state.candidates.length === 0) {
+      // Move cursor to beginning when no suggestions shown
+      state = window.YamiSuggestViewState.moveCursor(state, -state.cursorPos);
+    } else if (key === 'End' && state.candidates.length === 0) {
+      // Move cursor to end when no suggestions shown
+      state = window.YamiSuggestViewState.moveCursor(state, state.buffer.length - state.cursorPos);
     } else if (key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
       // Regular printable character
-      state = {
-        ...state,
-        buffer: state.buffer + key,
-      };
+      state = window.YamiSuggestViewState.insertAt(state, key);
       updateSuggestions();
     }
   }
@@ -181,10 +193,10 @@ window.YamiSuggest = (() => {
 
     const text = e.data || '';
     if (text) {
-      state = {
-        ...state,
-        buffer: state.buffer + text,
-      };
+      // Insert each character at cursor position
+      for (let i = 0; i < text.length; i++) {
+        state = window.YamiSuggestViewState.insertAt(state, text[i]);
+      }
       updateSuggestions();
     }
   }
@@ -203,7 +215,7 @@ window.YamiSuggest = (() => {
 
       if (window.yamiterm?.suggest) {
         window.yamiterm.suggest(state.buffer).then(results => {
-          state = window.YamiSuggestViewState.setCandidates(state, results || [], state.buffer);
+          state = window.YamiSuggestViewState.setCandidates(state, results || [], state.buffer, state.cursorPos);
           renderSuggestions();
         }).catch(() => {
           state = window.YamiSuggestViewState.reset(state);

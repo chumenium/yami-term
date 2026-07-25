@@ -6,6 +6,10 @@ const {
   moveSelection,
   currentGhost,
   reset,
+  insertAt,
+  deleteBefore,
+  deleteAt,
+  moveCursor,
 } = require('../renderer/suggest-view-state.js');
 
 test('createState() returns initial state', () => {
@@ -14,6 +18,7 @@ test('createState() returns initial state', () => {
     selectedIndex: -1,
     candidates: [],
     buffer: '',
+    cursorPos: 0,
   });
 });
 
@@ -195,6 +200,7 @@ test('reset() returns state to initial values', () => {
     selectedIndex: -1,
     candidates: [],
     buffer: '',
+    cursorPos: 0,
   });
 });
 
@@ -286,4 +292,231 @@ test('all functions maintain immutability with Object.freeze', () => {
   const s3 = reset(s2);
   assert.strictEqual(s2.buffer, 'git ');
   assert.strictEqual(s3.buffer, '');
+});
+
+// Tests for insertAt
+test('insertAt() inserts single character into empty buffer and increments cursorPos', () => {
+  const s = createState();
+  const s1 = insertAt(s, 'a');
+
+  assert.strictEqual(s1.buffer, 'a');
+  assert.strictEqual(s1.cursorPos, 1);
+  assert.strictEqual(s.buffer, ''); // Original state unchanged (immutability)
+  assert.strictEqual(s.cursorPos, 0);
+});
+
+test('insertAt() inserts character at middle position with correct split', () => {
+  let s = createState();
+  s = setCandidates(s, [], 'hello');
+
+  // Move cursor to position 2 (between 'e' and 'l')
+  s = { ...s, cursorPos: 2 };
+  const s1 = insertAt(s, 'X');
+
+  assert.strictEqual(s1.buffer, 'heXllo');
+  assert.strictEqual(s1.cursorPos, 3);
+  assert.strictEqual(s.buffer, 'hello'); // Original unchanged
+});
+
+test('insertAt() inserts character at start of buffer', () => {
+  let s = createState();
+  s = setCandidates(s, [], 'hello');
+  s = { ...s, cursorPos: 0 };
+
+  const s1 = insertAt(s, 'X');
+
+  assert.strictEqual(s1.buffer, 'Xhello');
+  assert.strictEqual(s1.cursorPos, 1);
+});
+
+test('insertAt() inserts character at end of buffer', () => {
+  let s = createState();
+  s = setCandidates(s, [], 'hello');
+  s = { ...s, cursorPos: 5 };
+
+  const s1 = insertAt(s, 'X');
+
+  assert.strictEqual(s1.buffer, 'helloX');
+  assert.strictEqual(s1.cursorPos, 6);
+});
+
+// Tests for deleteBefore
+test('deleteBefore() deletes character before cursor when cursorPos > 0', () => {
+  let s = createState();
+  s = setCandidates(s, [], 'hello');
+  s = { ...s, cursorPos: 3 }; // Cursor after 'l' (3rd char)
+
+  const s1 = deleteBefore(s);
+
+  assert.strictEqual(s1.buffer, 'helo');
+  assert.strictEqual(s1.cursorPos, 2);
+  assert.strictEqual(s.buffer, 'hello'); // Original unchanged
+});
+
+test('deleteBefore() does nothing when cursorPos = 0', () => {
+  let s = createState();
+  s = setCandidates(s, [], 'hello');
+  s = { ...s, cursorPos: 0 };
+
+  const s1 = deleteBefore(s);
+
+  assert.strictEqual(s1.buffer, 'hello');
+  assert.strictEqual(s1.cursorPos, 0);
+  assert.strictEqual(s1, s); // Should return same state object
+});
+
+test('deleteBefore() deletes at end of buffer', () => {
+  let s = createState();
+  s = setCandidates(s, [], 'hello');
+  s = { ...s, cursorPos: 5 };
+
+  const s1 = deleteBefore(s);
+
+  assert.strictEqual(s1.buffer, 'hell');
+  assert.strictEqual(s1.cursorPos, 4);
+});
+
+// Tests for deleteAt
+test('deleteAt() deletes character at cursor position', () => {
+  let s = createState();
+  s = setCandidates(s, [], 'hello');
+  s = { ...s, cursorPos: 2 }; // Cursor at 3rd char 'l'
+
+  const s1 = deleteAt(s);
+
+  assert.strictEqual(s1.buffer, 'helo');
+  assert.strictEqual(s1.cursorPos, 2); // Cursor pos unchanged
+  assert.strictEqual(s.buffer, 'hello'); // Original unchanged
+});
+
+test('deleteAt() does nothing when cursorPos >= buffer.length', () => {
+  let s = createState();
+  s = setCandidates(s, [], 'hello');
+  s = { ...s, cursorPos: 5 }; // At end
+
+  const s1 = deleteAt(s);
+
+  assert.strictEqual(s1.buffer, 'hello');
+  assert.strictEqual(s1.cursorPos, 5);
+  assert.strictEqual(s1, s); // Should return same state object
+});
+
+test('deleteAt() at position 0 deletes first character', () => {
+  let s = createState();
+  s = setCandidates(s, [], 'hello');
+  s = { ...s, cursorPos: 0 };
+
+  const s1 = deleteAt(s);
+
+  assert.strictEqual(s1.buffer, 'ello');
+  assert.strictEqual(s1.cursorPos, 0);
+});
+
+// Tests for moveCursor
+test('moveCursor() moves cursor forward by positive delta', () => {
+  let s = createState();
+  s = setCandidates(s, [], 'hello');
+  s = { ...s, cursorPos: 2 };
+
+  const s1 = moveCursor(s, 2);
+
+  assert.strictEqual(s1.cursorPos, 4);
+  assert.strictEqual(s.cursorPos, 2); // Original unchanged
+});
+
+test('moveCursor() moves cursor backward by negative delta', () => {
+  let s = createState();
+  s = setCandidates(s, [], 'hello');
+  s = { ...s, cursorPos: 4 };
+
+  const s1 = moveCursor(s, -2);
+
+  assert.strictEqual(s1.cursorPos, 2);
+});
+
+test('moveCursor() clamps to 0 when delta would go below 0', () => {
+  let s = createState();
+  s = setCandidates(s, [], 'hello');
+  s = { ...s, cursorPos: 2 };
+
+  const s1 = moveCursor(s, -5); // Try to go to -3
+
+  assert.strictEqual(s1.cursorPos, 0); // Clamped to 0
+});
+
+test('moveCursor() clamps to buffer.length when delta would exceed it', () => {
+  let s = createState();
+  s = setCandidates(s, [], 'hello');
+  s = { ...s, cursorPos: 3 };
+
+  const s1 = moveCursor(s, 5); // Try to go to 8, buffer length is 5
+
+  assert.strictEqual(s1.cursorPos, 5); // Clamped to buffer.length
+});
+
+test('moveCursor() with delta 0 does not change position', () => {
+  let s = createState();
+  s = setCandidates(s, [], 'hello');
+  s = { ...s, cursorPos: 2 };
+
+  const s1 = moveCursor(s, 0);
+
+  assert.strictEqual(s1.cursorPos, 2);
+});
+
+// Tests for currentGhost() regression with cursor position
+test('currentGhost() returns candidate remainder when cursorPos equals buffer.length', () => {
+  let s = createState();
+  const list = [
+    { text: 'git status', type: 'history' },
+  ];
+  s = setCandidates(s, list, 'git s');
+  // After setCandidates, cursorPos should still be 0 by default, but we need it to match buffer.length
+  s = { ...s, cursorPos: s.buffer.length }; // Set cursorPos to 5 (length of 'git s')
+
+  const ghost = currentGhost(s);
+
+  assert.strictEqual(ghost, 'tatus');
+});
+
+test('currentGhost() returns empty string when cursorPos is not at buffer.length', () => {
+  let s = createState();
+  const list = [
+    { text: 'git status', type: 'history' },
+  ];
+  s = setCandidates(s, list, 'git s');
+  // cursorPos is before end of buffer
+  s = { ...s, cursorPos: 3 }; // Not at end
+
+  const ghost = currentGhost(s);
+
+  assert.strictEqual(ghost, '');
+});
+
+test('currentGhost() returns ghost text at buffer end despite having more text', () => {
+  let s = createState();
+  const list = [
+    { text: 'git status', type: 'history' },
+  ];
+  s = setCandidates(s, list, 'git s');
+  // Simulate user typing 'git s', cursor is after 's'
+  s = { ...s, cursorPos: 5 };
+
+  // cursorPos = 5 = buffer.length, so should show ghost
+  const ghost = currentGhost(s);
+  assert.strictEqual(ghost, 'tatus');
+});
+
+test('currentGhost() with cursor in middle of buffer returns empty string', () => {
+  let s = createState();
+  const list = [
+    { text: 'git status', type: 'history' },
+  ];
+  s = setCandidates(s, list, 'git status');
+  // User placed cursor in middle
+  s = { ...s, cursorPos: 5 }; // In middle of 'git status'
+
+  const ghost = currentGhost(s);
+
+  assert.strictEqual(ghost, '');
 });
