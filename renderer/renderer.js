@@ -1,10 +1,31 @@
 // グローバルエラーハンドラー
 window.addEventListener('error', event => {
   console.error('[yami-term] uncaught error:', event.error || event.message);
+
+  // Report error to main process for persistent logging
+  const errorInfo = {
+    type: 'error',
+    message: event.error?.message || event.message || 'Unknown error',
+    stack: event.error?.stack || '',
+    filename: event.filename || '',
+    lineno: event.lineno || 0,
+    colno: event.colno || 0,
+    timestamp: new Date().toISOString(),
+  };
+  window.yamiterm?.reportError?.(errorInfo);
 });
 
 window.addEventListener('unhandledrejection', event => {
   console.error('[yami-term] unhandled rejection:', event.reason);
+
+  // Report rejection to main process for persistent logging
+  const errorInfo = {
+    type: 'unhandledrejection',
+    reason: String(event.reason),
+    stack: event.reason?.stack || '',
+    timestamp: new Date().toISOString(),
+  };
+  window.yamiterm?.reportError?.(errorInfo);
 });
 
 // モジュールスコープ変数（onConfigChanged で更新）

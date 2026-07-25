@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const PtyManager = require('./main/pty-manager');
 const config = require('./main/config');
 const pkg = require('./package.json');
@@ -145,6 +146,25 @@ function setupIpcChannels() {
       author: pkg.author,
       homepage: pkg.homepage || '',
     };
+  });
+
+  // renderer:error - log renderer errors to file
+  ipcMain.on('renderer:error', (event, errorInfo) => {
+    try {
+      const logsDir = path.join(app.getPath('userData'), 'logs');
+      // Create logs directory if it doesn't exist
+      fs.mkdirSync(logsDir, { recursive: true });
+
+      const logFilePath = path.join(logsDir, 'renderer-errors.log');
+      const logLine = JSON.stringify({
+        timestamp: errorInfo.timestamp || new Date().toISOString(),
+        ...errorInfo,
+      }) + '\n';
+
+      fs.appendFileSync(logFilePath, logLine, 'utf8');
+    } catch (err) {
+      console.error('[yami-term] failed to log renderer error:', err);
+    }
   });
 }
 

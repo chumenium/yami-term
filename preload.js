@@ -50,4 +50,8 @@ contextBridge.exposeInMainWorld('yamiterm', {
   async getAppInfo() {
     return ipcRenderer.invoke('app:getInfo');
   },
+
+  reportError(errorInfo) {
+    ipcRenderer.send('renderer:error', errorInfo);
+  },
 });
