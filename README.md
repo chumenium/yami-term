@@ -1,61 +1,85 @@
+🇬🇧 English | [🇯🇵 日本語](README.ja.md)
+
 # yami-term 🖤✨
 
-macOS向けの美しいターミナルエミュレータ。Liquid Glass UIとダークテーマで、ターミナルをもっと素敵に。
+An AI-focused terminal emulator for macOS / Windows. Liquid Glass UI, a dark theme, a one-click launcher for tools like Claude Code, and a menu bar indicator for when your AI CLI is waiting on you.
 
 <!-- TODO: screenshot -->
 
-## ✨ 特徴
+## ✨ Features
 
-- **Liquid Glass UI** — macOS vibrancy を活かしたガラス表現。ダークテーマでモダンな雰囲気を実現
-- **マルチタブ** — 複数のシェルセッションをタブで管理。Cmd+T で新規タブ、Cmd+W で閉じる、Cmd+1-9 でタブ間移動
-- **GUI設定モーダル** — Cmd+, で設定パネルを開く。フォント・透明度・アクセント色・カーソル点滅・補完の ON/OFF をリアルタイムで調整。設定は `~/.yami-term.json` に自動保存
-- **コマンド補完 v2** 🚀 — zsh 履歴と PATH 内のコマンドから候補を自動抽出。カーソル直後のインラインゴースト（薄い提案テキスト）とカーソル近くのミニリスト（最大5件）で入力をアシスト。Tab / → キーで確定、↑↓ キーで切替、Esc で閉じる
+- **Liquid Glass UI** — a modern dark theme (macOS gets true vibrancy/glass blur; Windows renders with the standard window frame)
+- **Multi-tab** — manage multiple shell sessions as tabs, reorderable via drag-and-drop
+- **Tool launcher + command palette** 🚀 — launch Claude Code with one click, or add your own custom commands from Settings. `Cmd/Ctrl+Shift+K` opens a searchable command palette for anything you've registered
+- **Menu bar approval-wait indicator** 🔔 — the tray icon changes when a running AI tool (e.g. Claude Code) is waiting for your approval in any tab; click it to jump straight there
+- **GUI settings modal** — `Cmd/Ctrl+,` opens the settings panel, organized into categories (font, appearance, terminal, language, etc.), auto-saved to `~/.yami-term.json`
+- **Command completion v2** — suggests from your shell history and `$PATH`, with inline ghost text and a mini dropdown list
+- **Scrollback search** — `Cmd/Ctrl+Shift+F` to search terminal output
+- **14 languages** — English and Japanese plus Simplified/Traditional Chinese, Korean, Spanish, French, German, Portuguese, Russian, Italian, Indonesian, Vietnamese, and Hindi
 
-## 📦 インストール
+## 📦 Installation
 
 ### macOS (Apple Silicon / Intel)
 
-1. [Releases ページ](https://github.com/chumenium/yami-term/releases) から以下のいずれかをダウンロード:
+1. Download from the [Releases page](https://github.com/chumenium/yami-term/releases):
    - **Apple Silicon**: `yami-term-<version>-arm64.dmg`
    - **Intel Mac**: `yami-term-<version>-x64.dmg`
-2. DMG ファイルを開いて、**yami-term.app** を Applications フォルダにドラッグ
-3. 初回起動時、"未認識の開発元" エラーが表示される場合:
-   - アプリを右クリック → **開く**
-   - それでもダメなら、ターミナルで以下を実行:
+2. Open the DMG and drag **yami-term.app** into your Applications folder
+3. If you see an "unidentified developer" error on first launch:
+   - Right-click the app → **Open**
+   - If that doesn't work, run in Terminal:
      ```bash
      xattr -cr /Applications/yami-term.app
      ```
 
-> **注:** yami-term は Apple の Developer Program での正式な署名・公証を行っていません。代わりに ad-hoc 署名を施しており、macOS Gatekeeper のセキュリティ警告を回避する対応が可能です（詳細は [トラブルシューティング](#-トラブルシューティング) を参照）。  
-> Releases に x64 が無い場合は、ソースからビルドしてください ([ビルド手順](#-ソースからビルド))
+> **Note:** yami-term isn't signed or notarized through Apple's Developer Program. It's ad-hoc signed instead, which means macOS Gatekeeper will show a security warning the first time you open it (see [Troubleshooting](#-troubleshooting) below).
 
-## ⌨️ ショートカット一覧
+### Windows
 
-| キー | 機能 |
-|------|------|
-| **Cmd+T** | 新規タブを開く |
-| **Cmd+W** | 現在のタブを閉じる |
-| **Cmd+1~9** | 対応するタブ番号へ切り替え |
-| **Cmd+,** | 設定パネルを開く |
+1. Download from the [Releases page](https://github.com/chumenium/yami-term/releases):
+   - **Installer**: `yami-term-Setup-<version>.exe`
+   - **Portable** (no install needed): `yami-term-<version>-portable.exe`
+2. If Windows SmartScreen says "Windows protected your PC":
+   - Click **More info**
+   - Click **Run anyway**
 
-## ⚙️ 設定
+> **Note:** yami-term doesn't have a code-signing certificate yet, so Windows SmartScreen flags it as coming from an unknown publisher. The source is fully public — check it out before running if you'd like.
 
-### GUI で設定
+## ⌨️ Shortcuts
 
-Cmd+, を押すと設定ウィンドウが開きます。以下の項目が調整可能です:
+| Action | macOS | Windows |
+|--------|-------|---------|
+| New tab | `Cmd+T` | `Ctrl+Shift+T` |
+| Close current tab | `Cmd+W` | `Ctrl+Shift+W` |
+| Switch to tab N | `Cmd+1-9` | `Ctrl+1-9` |
+| Next tab | `Cmd+Shift+]` | `Ctrl+Shift+]` |
+| Previous tab | `Cmd+Shift+[` | `Ctrl+Shift+[` |
+| Open settings | `Cmd+,` | `Ctrl+,` |
+| Open command palette | `Cmd+K` | `Ctrl+Shift+K` |
+| Search scrollback | `Cmd+F` | `Ctrl+Shift+F` |
+| Zoom font in/out | `Cmd+=` / `Cmd+-` | `Ctrl+=` / `Ctrl+-` |
+| Reset font size | `Cmd+0` | `Ctrl+0` |
 
-- **フォント** — Menlo、Monaco、Courier New など任意のモノスペースフォント
-- **フォントサイズ** — 8pt ～ 28pt (デフォルト: 14pt)
-- **透明度** — 0% ～ 100% (デフォルト: 80%)
-- **アクセント色** — ピンク / 紫 / その他カラーピッカーで自由選択
-- **カーソル点滅** — ON/OFF
-- **補完機能** — ON/OFF
+> On Windows/Linux, plain `Ctrl+T`/`Ctrl+W`/`Ctrl+K` etc. are already bound by the shell's own readline (word delete, kill-to-end-of-line, and so on), so these shortcuts require an extra Shift there — the same layout Windows Terminal uses.
 
-変更内容はリアルタイムで反映され、`~/.yami-term.json` に自動保存されます。
+## ⚙️ Settings
 
-### 設定ファイル (`~/.yami-term.json`)
+### Via the GUI
 
-手動編集も可能です:
+`Cmd/Ctrl+,` opens the settings window, grouped by category:
+
+- **General** — language, shell
+- **Appearance** — theme, accent color, glass opacity, bloom effect
+- **Font** — font size/family, letter spacing, line height
+- **Terminal** — cursor blink, scrollback lines, command suggestions
+
+There are also sections for **managing launchers** (add/remove commands) and **approval detection** (enable/disable/add patterns).
+
+Changes apply live and are saved to `~/.yami-term.json` automatically (the language setting is the one exception — it takes effect on next launch).
+
+### Config file (`~/.yami-term.json`)
+
+Example of the main keys:
 
 ```json
 {
@@ -65,109 +89,114 @@ Cmd+, を押すと設定ウィンドウが開きます。以下の項目が調�
   "opacity": 0.8,
   "accent": "#ff79c6",
   "shell": "/bin/zsh",
-  "suggest": true
+  "suggest": true,
+  "theme": "yamikawa",
+  "language": "auto"
 }
 ```
 
-| キー | 説明 | デフォルト |
-|------|------|---------|
-| `fontSize` | フォントサイズ (pt) | 14 |
-| `fontFamily` | フォント名 | Menlo |
-| `cursorBlink` | カーソル点滅 | true |
-| `opacity` | ウィンドウ透明度 (0-1) | 0.8 |
-| `accent` | アクセント色 (16進カラーコード) | #ff79c6 |
-| `shell` | デフォルトシェル | /bin/zsh |
-| `suggest` | コマンド補完 | true |
+| Key | Description | Default |
+|-----|-------------|---------|
+| `fontSize` | Font size (pt) | 14 |
+| `fontFamily` | Font name | Menlo |
+| `cursorBlink` | Cursor blink | true |
+| `opacity` | Window opacity (0-1) | 0.8 |
+| `accent` | Accent color (hex) | #ff79c6 |
+| `shell` | Default shell | OS-dependent |
+| `suggest` | Command suggestions | true |
+| `theme` | Color theme | yamikawa |
+| `letterSpacing` | Letter spacing | 0 |
+| `lineHeight` | Line height | 1.0 |
+| `scrollback` | Scrollback lines | 1000 |
+| `bloomEnabled` | Bloom (glow) effect | false |
+| `bloomIntensity` | Bloom intensity | 4 |
+| `language` | UI language (`auto` detects it) | auto |
+| `launchers` | Registered tool launchers | Claude Code (+ Finder on macOS) |
+| `approvalPatterns` | Approval-wait detection patterns | Claude Code + a generic y/n one |
 
-## 💡 補完機能の使い方
+## 💡 Using command completion
 
-yami-term のコマンド補完は以下のソースから候補を提案します:
+yami-term suggests commands from two sources:
 
-1. **zsh 履歴** — 過去に実行したコマンド (リーセンシー優先・タイムスタンプ表示 🕐)
-2. **PATH コマンド** ⚡ — `$PATH` に含まれる実行可能ファイル
+1. **Shell history** — commands you've actually run (auto-picks zsh or bash history based on your configured shell)
+2. **PATH commands** — executables available on your `$PATH`
 
-### 動作仕様（v2）
+### Controls
 
-補完は **2つのUI要素** で構成されています:
+| Key | Action |
+|-----|--------|
+| **Tab** / **→** | Accept the top suggestion (or ghost text) |
+| **↑** / **↓** | Move the selection in the mini list |
+| **Esc** | Close the suggestion UI, reset |
+| **Mouse click / hover** | Accept / preview a candidate |
 
-- **インラインゴースト** — カーソル直後に薄いテキストで次の入力を提案。選択候補の残り部分をプレビュー
-- **ミニリスト** — カーソル直下に最大5件の候補をポップアップ。マウスでもキーボードでも選択可能
+> **Note:** Suggestions are suppressed while IME composition (e.g. Japanese input) is active, and resume once you commit the text.
 
-### 操作方法
+Turn completion off entirely by setting `"suggest": false` in `~/.yami-term.json`.
 
-| キー | 動作 |
-|------|------|
-| **Tab** / **→** | 最初の候補（またはゴースト）を確定・入力 |
-| **↑** / **↓** | ミニリスト内で選択候補を切り替え |
-| **Esc** | 補完パネルを閉じる、候補をリセット |
-| **マウスクリック** | リスト内の候補をそのまま確定 |
+## 🛠 Building from source
 
-> **注:** IME（日本語入力）が有効な場合は補完は表示されません。確定後に補完が再開されます。
+### Requirements
 
-補完は `~/.yami-term.json` の `"suggest": false` で無効化できます。
+- Node.js 20+
+- npm (bundled with Node.js)
+- **macOS**: Xcode Command Line Tools (`xcode-select --install`)
+- **Windows**: Visual Studio Build Tools (needed to compile node-pty's native module)
 
-## 🛠 ソースからビルド
-
-### 前提条件
-
-- Node.js 20 以上
-- Xcode Command Line Tools (`xcode-select --install`)
-- npm (Node.js に付属)
-
-### ビルド手順
+### Build
 
 ```bash
-# リポジトリをクローン
+# Clone the repo
 git clone https://github.com/chumenium/yami-term.git
 cd yami-term
 
-# 依存パッケージをインストール
+# Install dependencies
 npm install
 
-# 開発モードで起動
+# Run in dev mode
 npm start
 
-# 配布用 dmg を生成 (dist/ ディレクトリに出力)
-npm run dist
+# Build a distributable package (output goes to dist/)
+npm run dist        # macOS (host arch)
+npm run dist:arm64   # macOS (Apple Silicon)
+npm run dist:win     # Windows
 ```
 
-ビルド後、dist/ フォルダに `yami-term-<version>-arm64.dmg` が出力されます。
+## 🔧 Troubleshooting
 
-## 🔧 トラブルシューティング
+### macOS: "yami-term is damaged and can't be opened" / "can't verify the developer"
 
-### "yami-term"は壊れているため、開けません / 開発元を確認できません
+macOS Gatekeeper can flag the app on first launch. Two ways to fix it:
 
-macOS Gatekeeper がセキュリティ警告を表示する場合があります。以下の方法で解決できます。
+**Option 1: Open from Finder**
 
-**方法 1: Finder から開く**
+1. Open **Finder** and go to your Applications folder
+2. **Right-click** (or Control-click) **yami-term.app**
+3. Choose **Open** from the menu
+4. Click **Open** again in the confirmation dialog
 
-1. **Finder** を開いて Applications フォルダに移動
-2. **yami-term.app** を **右クリック**（または Control キーを押しながらクリック）
-3. メニューから **「開く」** を選択
-4. 確認ダイアログで **「開く」** をクリック
-
-**方法 2: ターミナルで属性を削除**
-
-上記の方法で解決しない場合、ターミナルで以下を実行してください:
+**Option 2: Clear the quarantine attribute from Terminal**
 
 ```bash
 xattr -cr /Applications/yami-term.app
 ```
 
-**なぜこれが必要？**
+**Why does this happen?** yami-term isn't signed or notarized through Apple's Developer Program. It's ad-hoc signed instead, which is enough to avoid the harshest "damaged" error, but Gatekeeper still treats it as an unidentified developer on first run.
 
-yami-term は Apple Developer Program での正式なコード署名・公証を行っていません。代わりに ad-hoc 署名を施しており、macOS の Gatekeeper が「信頼できない開発元」として初回起動時に警告を表示します。上記の手順により、システムレベルでこのアプリを信頼できるものとしてマークできます。
+### Windows: SmartScreen says "Windows protected your PC"
 
-## 📝 既知の制限
+yami-term doesn't have a (paid) code-signing certificate yet, so it shows up as an unrecognized publisher. Click **More info → Run anyway** to launch it.
 
-- **Ad-hoc 署名のみ** — Apple の Developer Program による正式な署名ではなく ad-hoc 署名のため、初回起動時に Gatekeeper の警告が表示されます
-- **公証なし** — Notarization (Appleの公証サービス) を経由していません
-- **補完の行追跡** — 複数行入力時の補完ロジックは簡易実装です。インラインゴースト・ミニリストは現在行のみ対応
-- **macOS 専用** — Electron のネイティブ API (vibrancy) を使用しているため、Windows・Linux 対応予定はありません
-- **RTL(右→左)言語は未対応** — アラビア語・ヘブライ語等はレイアウト(テキスト方向・UI配置)の追加対応が必要なため、現時点ではスコープ外です
+## 📝 Known limitations
+
+- **Unsigned** — ad-hoc signed with no notarization on macOS, and no code-signing certificate on Windows; both platforms will show a security warning on first run
+- **No true "glass" look on Windows** — the vibrancy/blur effect relies on a macOS-only API, so Windows renders with a standard window frame instead (purely cosmetic, nothing is functionally broken)
+- **No Finder-equivalent launcher on Windows** — the built-in "reveal active tab's directory" launcher depends on a macOS-only command (`lsof`) to resolve a shell's working directory, so it isn't offered on Windows/Linux for now
+- **No RTL language support** — Arabic, Hebrew, etc. would need real text-direction/layout work beyond just translated strings, so they're out of scope for now
+- **Linux is untested** — not built or verified on Linux
 
 ## 📄 License
 
 MIT License &copy; 2026 chumenium
 
-詳細は [LICENSE](./LICENSE) ファイルを参照してください。
+See the [LICENSE](./LICENSE) file for details.
