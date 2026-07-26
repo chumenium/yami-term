@@ -275,6 +275,75 @@ test('query() deduplicates across history and commands', (t) => {
   }
 });
 
+test('getHistoryFileForShell() returns .bash_history for bash', () => {
+  const result = createSuggestSource.getHistoryFileForShell('/bin/bash');
+  assert.ok(result.endsWith('.bash_history'));
+});
+
+test('getHistoryFileForShell() returns .zsh_history for zsh', () => {
+  const result = createSuggestSource.getHistoryFileForShell('/bin/zsh');
+  assert.ok(result.endsWith('.zsh_history'));
+});
+
+test('getHistoryFileForShell() falls back to .zsh_history for undefined/unknown shell', () => {
+  assert.ok(createSuggestSource.getHistoryFileForShell(undefined).endsWith('.zsh_history'));
+  assert.ok(createSuggestSource.getHistoryFileForShell('/bin/sh').endsWith('.zsh_history'));
+});
+
+test('query() splits pathEnv using platform delimiter (multiple dirs)', (t) => {
+  const tmpDir = createTempDir();
+  const binDir1 = path.join(tmpDir, 'bin1');
+  const binDir2 = path.join(tmpDir, 'bin2');
+  fs.mkdirSync(binDir1);
+  fs.mkdirSync(binDir2);
+
+  try {
+    fs.writeFileSync(path.join(binDir1, 'git-one'), 'echo test', 'utf8');
+    fs.chmodSync(path.join(binDir1, 'git-one'), 0o755);
+    fs.writeFileSync(path.join(binDir2, 'git-two'), 'echo test', 'utf8');
+    fs.chmodSync(path.join(binDir2, 'git-two'), 0o755);
+
+    const source = createSuggestSource({
+      historyFile: path.join(tmpDir, '.zsh_history_nonexistent'),
+      pathEnv: [binDir1, binDir2].join(path.delimiter),
+    });
+    const results = source.query('git');
+
+    const commands = results.filter(r => r.type === 'command');
+    assert(commands.some(r => r.text === 'git-one'));
+    assert(commands.some(r => r.text === 'git-two'));
+  } finally {
+    cleanupTempDir(tmpDir);
+  }
+});
+
+test('isExecutableFile via query() uses extension check on win32', (t) => {
+  const tmpDir = createTempDir();
+  const binDir = path.join(tmpDir, 'bin');
+  fs.mkdirSync(binDir);
+  const originalPlatform = process.platform;
+
+  try {
+    fs.writeFileSync(path.join(binDir, 'git-tool.exe'), 'binary', 'utf8');
+    fs.writeFileSync(path.join(binDir, 'git-readme.txt'), 'text', 'utf8');
+
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+
+    const source = createSuggestSource({
+      historyFile: path.join(tmpDir, '.zsh_history_nonexistent'),
+      pathEnv: binDir,
+    });
+    const results = source.query('git');
+    const commands = results.filter(r => r.type === 'command');
+
+    assert(commands.some(r => r.text === 'git-tool.exe'));
+    assert(!commands.some(r => r.text === 'git-readme.txt'));
+  } finally {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+    cleanupTempDir(tmpDir);
+  }
+});
+
 test('query() result objects have text and type properties', (t) => {
   const tmpDir = createTempDir();
   try {

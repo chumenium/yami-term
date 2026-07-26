@@ -103,11 +103,34 @@ window.YamiSuggest = (() => {
       }
     }, true);
     document.addEventListener('compositionend', handleCompositionEnd, true);
+    document.addEventListener('paste', handlePaste, true);
     window.addEventListener('resize', () => {
       if (state.candidates.length > 0) {
         closeSuggestions();
       }
     });
+  }
+
+  // ペーストされたテキストもshadow bufferに反映する。
+  // xterm.js自体へのペースト処理(実ターミナルへの書き込み)は妨げない(preventDefaultしない)。
+  function handlePaste(e) {
+    if (!isEnabled) return;
+
+    const term = getActiveTerm?.();
+    if (!term) return;
+
+    const text = e.clipboardData?.getData('text') || '';
+    if (!text) return;
+
+    for (const ch of text) {
+      if (ch === '\n' || ch === '\r') {
+        // 改行を含むペーストは新しい行の開始として扱いバッファをリセットする
+        state = window.YamiSuggestViewState.reset(state);
+      } else {
+        state = window.YamiSuggestViewState.insertAt(state, ch);
+      }
+    }
+    updateSuggestions();
   }
 
   // Handle keydown events
@@ -309,6 +332,7 @@ window.YamiSuggest = (() => {
           selectedIndex: index,
         };
         renderGhost();
+        updateSelectedHighlight();
       });
 
       popupList.appendChild(itemEl);
@@ -323,6 +347,14 @@ window.YamiSuggest = (() => {
     } else {
       popupList.style.display = 'none';
     }
+  }
+
+  // ホバーで選択候補が変わった時、リスト全体を再構築せず選択ハイライトだけ更新する
+  // (renderPopupList()を丸ごと呼ぶとinnerHTMLリセットでホバー中のイベントが暴れるため)
+  function updateSelectedHighlight() {
+    Array.from(popupList.children).forEach((child, index) => {
+      child.classList.toggle('selected', index === state.selectedIndex);
+    });
   }
 
   // Calculate cursor position relative to term pane

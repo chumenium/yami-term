@@ -2,9 +2,19 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+// 設定されたshellに応じた履歴ファイルを選ぶ(zsh拡張履歴 or bashプレーン履歴)。
+// main.jsがconfig.shell変更時に再利用する(Electron非依存なのでここに置きテスト可能にする)。
+function getHistoryFileForShell(shellPath) {
+  const home = os.homedir();
+  if (typeof shellPath === 'string' && shellPath.includes('bash')) {
+    return path.join(home, '.bash_history');
+  }
+  return path.join(home, '.zsh_history');
+}
+
 function createSuggestSource(options = {}) {
   const {
-    historyFile = path.join(os.homedir(), '.zsh_history'),
+    historyFile = getHistoryFileForShell(),
     pathEnv = process.env.PATH,
   } = options;
 
@@ -74,12 +84,22 @@ function createSuggestSource(options = {}) {
     return historyCache;
   }
 
+  // Windows実行可能ファイルの拡張子一覧(PATHEXT相当、大文字小文字を無視して比較)
+  const WINDOWS_EXECUTABLE_EXTENSIONS = ['.exe', '.bat', '.cmd', '.com', '.ps1'];
+
   // A command must be a top-level file (not a child directory) and
   // executable by someone, otherwise it isn't a real runnable command.
+  // Windows にはUnixの実行権限ビットが無いため、拡張子で判定する。
   function isExecutableFile(fullPath) {
     try {
       const stat = fs.statSync(fullPath);
       if (!stat.isFile()) return false;
+
+      if (process.platform === 'win32') {
+        const ext = path.extname(fullPath).toLowerCase();
+        return WINDOWS_EXECUTABLE_EXTENSIONS.includes(ext);
+      }
+
       return (stat.mode & 0o111) !== 0;
     } catch (err) {
       return false;
@@ -93,7 +113,8 @@ function createSuggestSource(options = {}) {
     }
 
     commandCache = new Set();
-    const dirs = pathEnv.split(':').filter(d => d);
+    // PATH区切りはUnix=':' / Windows=';'。path.delimiterでプラットフォーム非依存にする。
+    const dirs = pathEnv.split(path.delimiter).filter(d => d);
 
     for (const dir of dirs) {
       try {
@@ -170,5 +191,7 @@ function createSuggestSource(options = {}) {
     query,
   };
 }
+
+createSuggestSource.getHistoryFileForShell = getHistoryFileForShell;
 
 module.exports = createSuggestSource;

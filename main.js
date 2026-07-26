@@ -6,6 +6,7 @@ const PtyManager = require('./main/pty-manager');
 const config = require('./main/config');
 const createApprovalManager = require('./main/approval-manager');
 const createTrayManager = require('./main/tray-manager');
+const createSuggestSource = require('./main/suggest-source');
 const pkg = require('./package.json');
 
 // Load config on startup
@@ -15,6 +16,18 @@ let mainWindow = null;
 let ptyManager = null;
 let approvalManager = null;
 let trayManager = null;
+let suggestSource = null;
+
+// suggestSourceは内部にhistory/commandキャッシュを持つため、毎回new生成すると
+// キャッシュが効かず起動のたびPATH全ディレクトリを再スキャンしてしまう。
+// 1度だけ生成して使い回し、shell設定が変わった時のみ再構築する。
+function rebuildSuggestSource() {
+  const currentConfig = config.get();
+  suggestSource = createSuggestSource({
+    pathEnv: process.env.PATH,
+    historyFile: createSuggestSource.getHistoryFileForShell(currentConfig.shell),
+  });
+}
 
 function showAndFocusWindow() {
   if (!mainWindow) return;
@@ -154,6 +167,10 @@ function setupIpcChannels() {
     if (approvalManager) {
       approvalManager.refreshPatterns();
     }
+    if ('shell' in partial) {
+      // シェルが変わったら履歴ファイルも変わるためsuggestSourceを再構築する
+      rebuildSuggestSource();
+    }
     // Broadcast config change to all windows
     sendToRenderer('config:changed', config.get());
   });
@@ -162,11 +179,7 @@ function setupIpcChannels() {
   ipcMain.handle('suggest:query', (event, payload) => {
     const { prefix } = payload;
     try {
-      const createSuggestSource = require('./main/suggest-source');
-      const suggestSource = createSuggestSource({
-        pathEnv: process.env.PATH,
-      });
-      const suggestions = suggestSource.query(prefix);
+      const suggestions = suggestSource?.query(prefix);
       return suggestions || [];
     } catch (err) {
       // Fallback to empty array if suggest-source is not available
@@ -184,8 +197,12 @@ function setupIpcChannels() {
     };
   });
 
-  // term:revealInFinder - open Finder at the pty's shell cwd
+  // term:revealInFinder - open Finder at the pty's shell cwd (macOS only, uses lsof)
   ipcMain.handle('term:revealInFinder', async (event, payload) => {
+    if (process.platform !== 'darwin') {
+      return { success: false, error: 'revealInFinder is only supported on macOS' };
+    }
+
     const { id } = payload || {};
     const pid = ptyManager.getPid(id);
     if (!pid) {
@@ -236,6 +253,7 @@ app.on('ready', () => {
   createWindow();
 
   approvalManager = createApprovalManager(() => config.get().approvalPatterns);
+  rebuildSuggestSource();
   trayManager = createTrayManager({
     iconPath: path.join(__dirname, 'renderer', 'tray-icon.png'),
     onActivateTab: (id) => {
