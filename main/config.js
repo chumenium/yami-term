@@ -1,5 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
+
+// Windowsの既定シェル。COMSPECは通常cmd.exeのフルパスを指す。
+const DEFAULT_WINDOWS_SHELL = process.env.COMSPEC || 'C:\\Windows\\System32\\cmd.exe';
 
 const DEFAULTS = {
   fontSize: 14,
@@ -7,7 +11,7 @@ const DEFAULTS = {
   cursorBlink: true,
   opacity: 0.8,
   accent: '#ff79c6',
-  shell: process.env.SHELL || '/bin/zsh',
+  shell: process.platform === 'win32' ? DEFAULT_WINDOWS_SHELL : (process.env.SHELL || '/bin/zsh'),
   suggest: true,
   theme: 'yamikawa',
   letterSpacing: 0,
@@ -17,7 +21,11 @@ const DEFAULTS = {
   bloomIntensity: 4,
   launchers: [
     { id: 'claude', label: 'Claude Code', type: 'command', command: 'claude', icon: 'claude-icon.png', builtin: true },
-    { id: 'finder', label: 'Finder', type: 'finder', icon: null, builtin: true },
+    // "Finder"はmacOS固有機能(pty pidからcwdを取得するのにlsofを使用)のため、
+    // Windows/Linuxでは既定ランチャーに含めない(誤った場所を開くくらいなら出さない方が安全)。
+    ...(process.platform === 'darwin'
+      ? [{ id: 'finder', label: 'Finder', type: 'finder', icon: null, builtin: true }]
+      : []),
   ],
   approvalPatterns: [
     { id: 'claude-code', label: 'Claude Code', pattern: 'Do you want to', enabled: true, builtin: true },
@@ -30,7 +38,8 @@ const DEFAULTS = {
 // レイアウト対応が別途必要になるため今回はスコープ外(将来課題)。
 const ALLOWED_LANGUAGES = ['auto', 'en', 'ja', 'zh-Hans', 'zh-Hant', 'ko', 'es', 'fr', 'de', 'pt', 'ru', 'it', 'id', 'vi', 'hi'];
 
-const CONFIG_FILE = path.join(process.env.HOME, '.yami-term.json');
+// process.env.HOMEはWindowsでは通常未設定のため、os.homedir()でクロスプラットフォームに解決する
+const CONFIG_FILE = path.join(os.homedir(), '.yami-term.json');
 
 let config = null;
 
@@ -108,11 +117,17 @@ function set(partial) {
 }
 
 function isShellAllowed(shellPath) {
-  const allowedPatterns = [
-    /^\/bin\/(zsh|bash|sh)$/,
-    /^\/usr\/local\/bin\//,
-    /^\/opt\/homebrew\/bin\//,
-  ];
+  const allowedPatterns = process.platform === 'win32'
+    ? [
+      /^[A-Za-z]:\\Windows\\System32\\cmd\.exe$/i,
+      /^[A-Za-z]:\\Windows\\System32\\WindowsPowerShell\\v1\.0\\powershell\.exe$/i,
+      /^[A-Za-z]:\\Program Files\\PowerShell\\7\\pwsh\.exe$/i,
+    ]
+    : [
+      /^\/bin\/(zsh|bash|sh)$/,
+      /^\/usr\/local\/bin\//,
+      /^\/opt\/homebrew\/bin\//,
+    ];
 
   if (!fs.existsSync(shellPath)) {
     return false;

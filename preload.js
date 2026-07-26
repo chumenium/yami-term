@@ -1,6 +1,10 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('yamiterm', {
+  // レンダラー側でCmd(mac)/Ctrl(Windows・Linux)のショートカット修飾キーを
+  // 判定するために公開する定数値(関数ではない)。
+  platform: process.platform,
+
   async createTerm() {
     return ipcRenderer.invoke('term:create');
   },

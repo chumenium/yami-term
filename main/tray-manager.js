@@ -33,7 +33,17 @@ function createTrayManager({ iconPath, onActivateTab, onShowWindow }) {
 
   function updateState(newAwaitingList) {
     awaitingList = Array.isArray(newAwaitingList) ? newAwaitingList : [];
-    tray.setTitle(awaitingList.length > 0 ? '🔴' : '');
+
+    // setTitle()はmacOS専用API(他OSでは無視される)。アイコン自体に色付きバッジ画像を
+    // 用意していないWindows/Linuxでも状態が伝わるよう、ツールチップは常に併用する。
+    if (typeof tray.setTitle === 'function') {
+      tray.setTitle(awaitingList.length > 0 ? '🔴' : '');
+    }
+    tray.setToolTip(
+      awaitingList.length > 0
+        ? `yami-term — ${awaitingList.length} tab(s) awaiting approval`
+        : 'yami-term'
+    );
   }
 
   function destroy() {

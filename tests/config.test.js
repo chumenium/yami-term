@@ -522,3 +522,48 @@ test('config.js - set()でサポート外のlanguage値は無視される', asyn
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('config.js - win32ではDEFAULTS.launchersにfinderが含まれない', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+  const originalPlatform = process.platform;
+
+  try {
+    process.env.HOME = tmpDir;
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    const launcherIds = config.DEFAULTS.launchers.map(l => l.id);
+    assert.ok(!launcherIds.includes('finder'));
+    assert.ok(launcherIds.includes('claude'));
+  } finally {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('config.js - win32ではDEFAULTS.shellがcmd.exe系になる', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+  const originalPlatform = process.platform;
+  const originalComspec = process.env.COMSPEC;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete process.env.COMSPEC;
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    assert.ok(config.DEFAULTS.shell.toLowerCase().includes('cmd.exe'));
+  } finally {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+    if (originalComspec !== undefined) process.env.COMSPEC = originalComspec;
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

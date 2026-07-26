@@ -35,13 +35,22 @@ window.YamiShortcuts = (() => {
   }
 
   function handleKeyDown(e) {
-    // Cmd (Meta) キーが押されている場合のみ処理
-    if (!e.metaKey) {
+    const isMac = window.yamiterm?.platform === 'darwin';
+
+    // Cmd(mac) / Ctrl(Windows・Linux) が押されている場合のみ処理
+    const primaryModifier = isMac ? e.metaKey : e.ctrlKey;
+    if (!primaryModifier) {
       return;
     }
 
-    // Cmd+T: 新規タブ
-    if (e.key === 't' || e.key === 'T') {
+    // Windows/LinuxのターミナルはCtrl+T/W/K/Fをreadline(bash/zsh)自体が
+    // 単語削除・行末削除・文字入力等に使うため、素のCtrl+<key>と衝突する。
+    // macはCmdキーがreadlineと競合しないため素のCmd+<key>のままでよいが、
+    // Windows/LinuxではShiftも要求してWindows Terminal等と同じ配列にする。
+    const needsShiftOnNonMac = !isMac && !e.shiftKey;
+
+    // Cmd+T / Ctrl+Shift+T: 新規タブ
+    if ((e.key === 't' || e.key === 'T') && !needsShiftOnNonMac) {
       e.preventDefault();
       if (window.YamiTabs && typeof window.YamiTabs.newTab === 'function') {
         window.YamiTabs.newTab();
@@ -49,8 +58,8 @@ window.YamiShortcuts = (() => {
       return;
     }
 
-    // Cmd+W: アクティブなタブを閉じる
-    if (e.key === 'w' || e.key === 'W') {
+    // Cmd+W / Ctrl+Shift+W: アクティブなタブを閉じる
+    if ((e.key === 'w' || e.key === 'W') && !needsShiftOnNonMac) {
       e.preventDefault();
       if (window.YamiTabs) {
         const activeId = window.YamiTabs?.getActiveId?.();
@@ -61,7 +70,7 @@ window.YamiShortcuts = (() => {
       return;
     }
 
-    // Cmd+1..9: n番目タブへ
+    // Cmd+1..9 / Ctrl+1..9: n番目タブへ(数字キーはreadlineと衝突しないため両OSとも素のまま)
     if (e.key >= '1' && e.key <= '9') {
       e.preventDefault();
       const tabIndex = parseInt(e.key, 10) - 1; // 0-indexed
@@ -76,56 +85,56 @@ window.YamiShortcuts = (() => {
       return;
     }
 
-    // Cmd+,: 設定モーダルを開く
+    // Cmd+, / Ctrl+,: 設定モーダルを開く
     if (e.key === ',') {
       e.preventDefault();
       document.dispatchEvent(new CustomEvent('yami:open-settings'));
       return;
     }
 
-    // Cmd+K: コマンドパレットを開く
-    if (e.key === 'k' || e.key === 'K') {
+    // Cmd+K / Ctrl+Shift+K: コマンドパレットを開く
+    if ((e.key === 'k' || e.key === 'K') && !needsShiftOnNonMac) {
       e.preventDefault();
       document.dispatchEvent(new CustomEvent('yami:open-command-palette'));
       return;
     }
 
-    // Cmd+Shift+]: 次のタブへ(循環)
+    // Cmd+Shift+] / Ctrl+Shift+]: 次のタブへ(循環)
     if (e.shiftKey && e.code === 'BracketRight') {
       e.preventDefault();
       window.YamiTabs?.activateRelative?.(1);
       return;
     }
 
-    // Cmd+Shift+[: 前のタブへ(循環)
+    // Cmd+Shift+[ / Ctrl+Shift+[: 前のタブへ(循環)
     if (e.shiftKey && e.code === 'BracketLeft') {
       e.preventDefault();
       window.YamiTabs?.activateRelative?.(-1);
       return;
     }
 
-    // Cmd+F: スクロールバック内検索を開く
-    if (e.key === 'f' || e.key === 'F') {
+    // Cmd+F / Ctrl+Shift+F: スクロールバック内検索を開く
+    if ((e.key === 'f' || e.key === 'F') && !needsShiftOnNonMac) {
       e.preventDefault();
       document.dispatchEvent(new CustomEvent('yami:open-search'));
       return;
     }
 
-    // Cmd+=/Cmd+Shift+=(Plus): フォントズームイン
+    // Cmd+=/Ctrl+=(Plus): フォントズームイン(ブラウザ等のズーム慣習に合わせ数字/記号キーは両OS共通)
     if (e.code === 'Equal') {
       e.preventDefault();
       adjustFontSize(1);
       return;
     }
 
-    // Cmd+-: フォントズームアウト
+    // Cmd+-/Ctrl+-: フォントズームアウト
     if (e.code === 'Minus') {
       e.preventDefault();
       adjustFontSize(-1);
       return;
     }
 
-    // Cmd+0: フォントサイズをデフォルトにリセット
+    // Cmd+0/Ctrl+0: フォントサイズをデフォルトにリセット
     if (e.code === 'Digit0') {
       e.preventDefault();
       resetFontSize();

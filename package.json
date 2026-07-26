@@ -1,7 +1,7 @@
 {
   "name": "yami-term",
-  "version": "0.5.0",
-  "description": "🖤 Liquid Glass terminal emulator for macOS — tabs, GUI settings, zsh-history suggestions",
+  "version": "0.6.0",
+  "description": "🖤 Liquid Glass terminal emulator for macOS and Windows — tabs, GUI settings, shell-history suggestions",
   "main": "main.js",
   "author": "chumenium",
   "license": "MIT",
@@ -28,6 +28,7 @@
     "test": "node --test tests/*.test.js",
     "dist": "electron-builder --mac",
     "dist:arm64": "electron-builder --mac --arm64",
+    "dist:win": "electron-builder --win",
     "verify:dist": "bash scripts/verify-dist.sh"
   },
   "build": {
@@ -61,6 +62,17 @@
       "category": "public.app-category.developer-tools",
       "icon": "assets/icon.icns",
       "darkModeSupport": true
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
   }
 }

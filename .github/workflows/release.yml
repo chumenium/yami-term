@@ -15,8 +15,13 @@ jobs:
       matrix:
         include:
           - os: macos-latest
+            platform: mac
             arch: arm64
           - os: macos-15-intel
+            platform: mac
+            arch: x64
+          - os: windows-latest
+            platform: win
             arch: x64
     timeout-minutes: 30
 
@@ -33,10 +38,17 @@ jobs:
         env:
           npm_config_arch: ${{ matrix.arch }}
 
-      - run: npx electron-builder --mac --${{ matrix.arch }} --publish never
+      - name: Build (macOS)
+        if: matrix.platform == 'mac'
+        run: npx electron-builder --mac --${{ matrix.arch }} --publish never
         shell: bash
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Build (Windows)
+        if: matrix.platform == 'win'
+        run: npx electron-builder --win --${{ matrix.arch }} --publish never
+        shell: bash
 
       - name: Upload to release
         shell: bash
@@ -50,5 +62,5 @@ jobs:
           gh release view "${GITHUB_REF_NAME}" || \
             gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --generate-notes || true
 
-          # Upload build artifacts
-          gh release upload "${GITHUB_REF_NAME}" dist/*.dmg dist/*.zip --clobber
+          # Upload build artifacts (globs that don't match on a given runner expand to nothing)
+          gh release upload "${GITHUB_REF_NAME}" dist/*.dmg dist/*.zip dist/*.exe --clobber
