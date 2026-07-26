@@ -53,6 +53,23 @@ function renameTab(state, id, title) {
   };
 }
 
+function moveTab(state, id, toIndex) {
+  const fromIndex = state.tabs.findIndex(tab => tab.id === id);
+  if (fromIndex === -1) return state;
+
+  const clampedToIndex = Math.max(0, Math.min(toIndex, state.tabs.length - 1));
+  if (fromIndex === clampedToIndex) return state;
+
+  const newTabs = [...state.tabs];
+  const [moved] = newTabs.splice(fromIndex, 1);
+  newTabs.splice(clampedToIndex, 0, moved);
+
+  return {
+    tabs: newTabs,
+    activeId: state.activeId,
+  };
+}
+
 // CommonJS + Browser両対応
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -61,6 +78,7 @@ if (typeof module !== 'undefined' && module.exports) {
     removeTab,
     setActive,
     renameTab,
+    moveTab,
   };
 } else {
   window.YamiTabsState = {
@@ -69,5 +87,6 @@ if (typeof module !== 'undefined' && module.exports) {
     removeTab,
     setActive,
     renameTab,
+    moveTab,
   };
 }

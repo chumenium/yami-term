@@ -6,6 +6,7 @@ const {
   removeTab,
   setActive,
   renameTab,
+  moveTab,
 } = require('../renderer/tabs-state.js');
 
 test('initialState() returns {tabs: [], activeId: null}', () => {
@@ -173,6 +174,69 @@ test('renameTab() non-existent id does nothing', () => {
   const s_after = renameTab(s, 'non-existent', 'New Title');
 
   assert.deepStrictEqual(s_after.tabs, s.tabs);
+});
+
+test('moveTab() moves a tab from one index to another', () => {
+  let s = initialState();
+  s = addTab(s, { id: 'tab1', title: 'Tab 1' });
+  s = addTab(s, { id: 'tab2', title: 'Tab 2' });
+  s = addTab(s, { id: 'tab3', title: 'Tab 3' });
+
+  const s_after = moveTab(s, 'tab1', 2);
+
+  assert.deepStrictEqual(s_after.tabs.map(t => t.id), ['tab2', 'tab3', 'tab1']);
+});
+
+test('moveTab() preserves activeId', () => {
+  let s = initialState();
+  s = addTab(s, { id: 'tab1', title: 'Tab 1' });
+  s = addTab(s, { id: 'tab2', title: 'Tab 2' });
+  s = setActive(s, 'tab1');
+
+  const s_after = moveTab(s, 'tab2', 0);
+
+  assert.strictEqual(s_after.activeId, 'tab1');
+});
+
+test('moveTab() clamps toIndex to valid range', () => {
+  let s = initialState();
+  s = addTab(s, { id: 'tab1', title: 'Tab 1' });
+  s = addTab(s, { id: 'tab2', title: 'Tab 2' });
+
+  const s_after = moveTab(s, 'tab1', 100);
+
+  assert.deepStrictEqual(s_after.tabs.map(t => t.id), ['tab2', 'tab1']);
+});
+
+test('moveTab() with non-existent id returns state unchanged', () => {
+  let s = initialState();
+  s = addTab(s, { id: 'tab1', title: 'Tab 1' });
+
+  const s_after = moveTab(s, 'non-existent', 0);
+
+  assert.deepStrictEqual(s_after.tabs, s.tabs);
+});
+
+test('moveTab() with same fromIndex/toIndex returns equivalent state', () => {
+  let s = initialState();
+  s = addTab(s, { id: 'tab1', title: 'Tab 1' });
+  s = addTab(s, { id: 'tab2', title: 'Tab 2' });
+
+  const s_after = moveTab(s, 'tab1', 0);
+
+  assert.deepStrictEqual(s_after.tabs.map(t => t.id), ['tab1', 'tab2']);
+});
+
+test('moveTab() does not mutate original state', () => {
+  let s = initialState();
+  s = addTab(s, { id: 'tab1', title: 'Tab 1' });
+  s = addTab(s, { id: 'tab2', title: 'Tab 2' });
+  const original_tabs = s.tabs;
+
+  const s_after = moveTab(s, 'tab1', 1);
+
+  assert.deepStrictEqual(s.tabs.map(t => t.id), ['tab1', 'tab2']);
+  assert.notStrictEqual(s_after.tabs, original_tabs);
 });
 
 test('all functions maintain immutability with Object.freeze', () => {

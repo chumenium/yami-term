@@ -47,8 +47,10 @@ window.YamiTabs = (() => {
 
       const fitAddon = new FitAddon.FitAddon();
       const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+      const searchAddon = new SearchAddon.SearchAddon();
       terminal.loadAddon(fitAddon);
       terminal.loadAddon(webLinksAddon);
+      terminal.loadAddon(searchAddon);
 
       const pane = document.createElement('div');
       pane.className = 'term-pane';
@@ -77,7 +79,7 @@ window.YamiTabs = (() => {
       });
       resizeObs.observe(pane);
 
-      termInstances.set(id, { terminal, fitAddon, pane });
+      termInstances.set(id, { terminal, fitAddon, searchAddon, pane });
       resizeObservers.set(id, resizeObs);
 
       state = TabsState.addTab(state, { id, title: 'Shell' });
@@ -111,6 +113,21 @@ window.YamiTabs = (() => {
     render();
   }
 
+  // delta分だけ現在のタブからずらして切り替える(循環)。Cmd+Shift+]/[ 用
+  function activateRelative(delta) {
+    if (state.tabs.length === 0) return;
+    const currentIndex = state.tabs.findIndex(tab => tab.id === state.activeId);
+    if (currentIndex === -1) return;
+
+    const newIndex = (currentIndex + delta + state.tabs.length) % state.tabs.length;
+    activate(state.tabs[newIndex].id);
+  }
+
+  function moveTab(id, toIndex) {
+    state = TabsState.moveTab(state, id, toIndex);
+    render();
+  }
+
   function activeTerm() {
     if (!state.activeId) return null;
     const inst = termInstances.get(state.activeId);
@@ -136,6 +153,12 @@ window.YamiTabs = (() => {
     return inst ? inst.pane : null;
   }
 
+  function getActiveSearchAddon() {
+    if (!state.activeId) return null;
+    const inst = termInstances.get(state.activeId);
+    return inst ? inst.searchAddon : null;
+  }
+
   async function newTabWithCommand(command) {
     await newTab();
     const activeId = getActiveId();
@@ -150,10 +173,11 @@ window.YamiTabs = (() => {
     const tabBar = document.getElementById('tab-bar');
     tabBar.innerHTML = '';
 
-    state.tabs.forEach(tab => {
+    state.tabs.forEach((tab, index) => {
       const tabEl = document.createElement('div');
       tabEl.className = 'tab' + (tab.id === state.activeId ? ' active' : '');
       tabEl.id = `tab-${tab.id}`;
+      tabEl.draggable = true;
 
       const titleEl = document.createElement('span');
       titleEl.className = 'tab-title';
@@ -171,6 +195,30 @@ window.YamiTabs = (() => {
 
       tabEl.addEventListener('click', () => {
         activate(tab.id);
+      });
+
+      // ドラッグ&ドロップでタブ並べ替え
+      tabEl.addEventListener('dragstart', e => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', tab.id);
+        tabEl.classList.add('dragging');
+      });
+
+      tabEl.addEventListener('dragend', () => {
+        tabEl.classList.remove('dragging');
+      });
+
+      tabEl.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      });
+
+      tabEl.addEventListener('drop', e => {
+        e.preventDefault();
+        const draggedId = e.dataTransfer.getData('text/plain');
+        if (draggedId && draggedId !== tab.id) {
+          moveTab(draggedId, index);
+        }
       });
 
       tabBar.appendChild(tabEl);
@@ -204,10 +252,13 @@ window.YamiTabs = (() => {
     newTabWithCommand,
     closeTab,
     activate,
+    activateRelative,
+    moveTab,
     activeTerm,
     getRawTerm,
     getAllTerms,
     getActiveId,
     getActiveTermPane,
+    getActiveSearchAddon,
   };
 })();

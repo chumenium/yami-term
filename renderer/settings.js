@@ -4,9 +4,12 @@ window.YamiSettings = (() => {
   let initialized = false;
   const DEBOUNCE_MS = 200;
 
+  const CATEGORY_ORDER = ['general', 'appearance', 'font', 'terminal'];
+
   const SETTINGS_SCHEMA = [
     {
       key: 'language',
+      category: 'general',
       labelKey: 'settings.language',
       noteKey: 'settings.language.note',
       type: 'select',
@@ -31,6 +34,7 @@ window.YamiSettings = (() => {
     },
     {
       key: 'fontSize',
+      category: 'font',
       labelKey: 'settings.fontSize',
       type: 'slider',
       min: 10,
@@ -40,6 +44,7 @@ window.YamiSettings = (() => {
     },
     {
       key: 'fontFamily',
+      category: 'font',
       labelKey: 'settings.fontFamily',
       type: 'text',
       default: 'Menlo, Monaco, "Courier New", monospace',
@@ -47,6 +52,7 @@ window.YamiSettings = (() => {
     },
     {
       key: 'opacity',
+      category: 'appearance',
       labelKey: 'settings.opacity',
       type: 'slider',
       min: 0.3,
@@ -56,18 +62,21 @@ window.YamiSettings = (() => {
     },
     {
       key: 'accent',
+      category: 'appearance',
       labelKey: 'settings.accent',
       type: 'color',
       default: '#ff79c6',
     },
     {
       key: 'cursorBlink',
+      category: 'terminal',
       labelKey: 'settings.cursorBlink',
       type: 'toggle',
       default: true,
     },
     {
       key: 'shell',
+      category: 'general',
       labelKey: 'settings.shell',
       type: 'text',
       default: '/bin/zsh',
@@ -75,12 +84,14 @@ window.YamiSettings = (() => {
     },
     {
       key: 'suggest',
+      category: 'terminal',
       labelKey: 'settings.suggest',
       type: 'toggle',
       default: true,
     },
     {
       key: 'theme',
+      category: 'appearance',
       labelKey: 'settings.theme',
       type: 'select',
       options: (window.YamiThemes?.THEMES || []).map(t => ({ value: t.id, label: t.label })),
@@ -88,6 +99,7 @@ window.YamiSettings = (() => {
     },
     {
       key: 'letterSpacing',
+      category: 'font',
       labelKey: 'settings.letterSpacing',
       type: 'slider',
       min: -2,
@@ -97,6 +109,7 @@ window.YamiSettings = (() => {
     },
     {
       key: 'lineHeight',
+      category: 'font',
       labelKey: 'settings.lineHeight',
       type: 'slider',
       min: 1.0,
@@ -106,6 +119,7 @@ window.YamiSettings = (() => {
     },
     {
       key: 'scrollback',
+      category: 'terminal',
       labelKey: 'settings.scrollback',
       type: 'slider',
       min: 500,
@@ -115,12 +129,14 @@ window.YamiSettings = (() => {
     },
     {
       key: 'bloomEnabled',
+      category: 'appearance',
       labelKey: 'settings.bloomEnabled',
       type: 'toggle',
       default: false,
     },
     {
       key: 'bloomIntensity',
+      category: 'appearance',
       labelKey: 'settings.bloomIntensity',
       type: 'slider',
       min: 0,
@@ -186,7 +202,16 @@ window.YamiSettings = (() => {
     title.textContent = window.YamiI18n?.t?.('settings.title') || 'Settings';
     card.appendChild(title);
 
-    SETTINGS_SCHEMA.forEach((schema, idx) => {
+    CATEGORY_ORDER.forEach((category, categoryIdx) => {
+      const itemsInCategory = SETTINGS_SCHEMA.filter(s => s.category === category);
+      if (itemsInCategory.length === 0) return;
+
+      const categoryHeader = document.createElement('div');
+      categoryHeader.className = 'settings-category-title';
+      categoryHeader.textContent = window.YamiI18n?.t?.(`settings.category.${category}`) || category;
+      card.appendChild(categoryHeader);
+
+      itemsInCategory.forEach((schema, idx) => {
       const group = document.createElement('div');
       group.className = 'settings-group';
 
@@ -313,11 +338,19 @@ window.YamiSettings = (() => {
 
       card.appendChild(group);
 
-      // 区切り線（最後以外）
-      if (idx < SETTINGS_SCHEMA.length - 1) {
-        const divider = document.createElement('div');
-        divider.className = 'settings-divider';
-        card.appendChild(divider);
+        // 区切り線（カテゴリ内、最後以外）
+        if (idx < itemsInCategory.length - 1) {
+          const divider = document.createElement('div');
+          divider.className = 'settings-divider';
+          card.appendChild(divider);
+        }
+      });
+
+      // カテゴリ間の区切り線（最後のカテゴリ以外）
+      if (categoryIdx < CATEGORY_ORDER.length - 1) {
+        const categoryDivider = document.createElement('div');
+        categoryDivider.className = 'settings-divider';
+        card.appendChild(categoryDivider);
       }
     });
 

@@ -209,8 +209,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.YamiCommandPalette.init();
       console.log('[yami-term] YamiCommandPalette.init completed');
     }
+    if (window.YamiSearch && typeof window.YamiSearch.init === 'function') {
+      window.YamiSearch.init();
+      console.log('[yami-term] YamiSearch.init completed');
+    }
   } catch (err) {
-    console.error('[yami-term] init failed: YamiLaunchers/YamiCommandPalette', err);
+    console.error('[yami-term] init failed: YamiLaunchers/YamiCommandPalette/YamiSearch', err);
   }
 
   // (g) empty-state ボタンのi18nラベル反映
