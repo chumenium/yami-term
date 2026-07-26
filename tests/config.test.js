@@ -291,7 +291,6 @@ test('config.js - DEFAULTSにlaunchersのビルトインプリセット(claude/f
 
     const defaults = config.DEFAULTS;
     assert.ok(Array.isArray(defaults.launchers));
-    assert.strictEqual(defaults.launchers.length, 2);
 
     const claude = defaults.launchers.find(l => l.id === 'claude');
     assert.ok(claude);
@@ -299,10 +298,17 @@ test('config.js - DEFAULTSにlaunchersのビルトインプリセット(claude/f
     assert.strictEqual(claude.command, 'claude');
     assert.strictEqual(claude.builtin, true);
 
+    // finderはmacOS専用ランチャーなので、実行中のプラットフォームがdarwinの時だけ存在する
     const finder = defaults.launchers.find(l => l.id === 'finder');
-    assert.ok(finder);
-    assert.strictEqual(finder.type, 'finder');
-    assert.strictEqual(finder.builtin, true);
+    if (process.platform === 'darwin') {
+      assert.ok(finder);
+      assert.strictEqual(finder.type, 'finder');
+      assert.strictEqual(finder.builtin, true);
+      assert.strictEqual(defaults.launchers.length, 2);
+    } else {
+      assert.strictEqual(finder, undefined);
+      assert.strictEqual(defaults.launchers.length, 1);
+    }
   } finally {
     process.env.HOME = originalHome;
     delete require.cache[require.resolve('../main/config.js')];
@@ -319,12 +325,13 @@ test('config.js - set()でカスタムlauncherを追加して反映', async (t) 
     delete require.cache[require.resolve('../main/config.js')];
     const config = require('../main/config.js');
 
+    const baseCount = config.DEFAULTS.launchers.length;
     const customLauncher = { id: 'custom-1', label: 'htop', type: 'command', command: 'htop', builtin: false };
     config.set({ launchers: [...config.DEFAULTS.launchers, customLauncher] });
 
     const result = config.get();
-    assert.strictEqual(result.launchers.length, 3);
-    assert.deepStrictEqual(result.launchers[2], customLauncher);
+    assert.strictEqual(result.launchers.length, baseCount + 1);
+    assert.deepStrictEqual(result.launchers[baseCount], customLauncher);
   } finally {
     process.env.HOME = originalHome;
     delete require.cache[require.resolve('../main/config.js')];
@@ -364,11 +371,12 @@ test('config.js - set()でlaunchersに配列以外を渡すと無視される', 
     delete require.cache[require.resolve('../main/config.js')];
     const config = require('../main/config.js');
 
+    const baseCount = config.DEFAULTS.launchers.length;
     config.set({ launchers: 'not-an-array' });
 
     const result = config.get();
-    // 元のDEFAULTS(ビルトイン2件)のまま維持される
-    assert.strictEqual(result.launchers.length, 2);
+    // 元のDEFAULTS(ビルトインランチャー)のまま維持される
+    assert.strictEqual(result.launchers.length, baseCount);
   } finally {
     process.env.HOME = originalHome;
     delete require.cache[require.resolve('../main/config.js')];

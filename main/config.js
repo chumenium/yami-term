@@ -38,8 +38,11 @@ const DEFAULTS = {
 // レイアウト対応が別途必要になるため今回はスコープ外(将来課題)。
 const ALLOWED_LANGUAGES = ['auto', 'en', 'ja', 'zh-Hans', 'zh-Hant', 'ko', 'es', 'fr', 'de', 'pt', 'ru', 'it', 'id', 'vi', 'hi'];
 
-// process.env.HOMEはWindowsでは通常未設定のため、os.homedir()でクロスプラットフォームに解決する
-const CONFIG_FILE = path.join(os.homedir(), '.yami-term.json');
+// process.env.HOMEが明示的に設定されていればそれを優先(テストでの隔離用途を含む)。
+// 未設定時はos.homedir()にフォールバック(Windowsは通常HOMEが無くUSERPROFILE経由で解決される)。
+// os.homedir()単独だとWindowsではHOMEを一切見ないため、テストがprocess.env.HOMEを
+// 上書きして一時ディレクトリに隔離する手法がWindowsでだけ効かなくなる点に注意。
+const CONFIG_FILE = path.join(process.env.HOME || os.homedir(), '.yami-term.json');
 
 let config = null;
 

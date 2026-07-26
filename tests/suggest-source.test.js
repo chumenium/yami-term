@@ -92,7 +92,12 @@ test('query() history is in reverse order (newest first)', (t) => {
   }
 });
 
-test('query() type=command for executables in pathEnv', (t) => {
+test('query() type=command for executables in pathEnv', {
+  // chmodによるUnixパーミッションビットの模擬はWindowsでは意味を持たない
+  // (win32のisExecutableFile()は拡張子で判定するため)。Windows側の挙動は
+  // 'isExecutableFile via query() uses extension check on win32' で別途検証済み。
+  skip: process.platform === 'win32' ? 'chmod-based executable simulation is POSIX-only' : false,
+}, (t) => {
   const tmpDir = createTempDir();
   const binDir = path.join(tmpDir, 'bin');
   fs.mkdirSync(binDir);
@@ -124,7 +129,9 @@ test('query() type=command for executables in pathEnv', (t) => {
   }
 });
 
-test('query() excludes child directories inside pathEnv dirs', (t) => {
+test('query() excludes child directories inside pathEnv dirs', {
+  skip: process.platform === 'win32' ? 'chmod-based executable simulation is POSIX-only' : false,
+}, (t) => {
   const tmpDir = createTempDir();
   const binDir = path.join(tmpDir, 'bin');
   fs.mkdirSync(binDir);
@@ -290,7 +297,9 @@ test('getHistoryFileForShell() falls back to .zsh_history for undefined/unknown 
   assert.ok(createSuggestSource.getHistoryFileForShell('/bin/sh').endsWith('.zsh_history'));
 });
 
-test('query() splits pathEnv using platform delimiter (multiple dirs)', (t) => {
+test('query() splits pathEnv using platform delimiter (multiple dirs)', {
+  skip: process.platform === 'win32' ? 'chmod-based executable simulation is POSIX-only' : false,
+}, (t) => {
   const tmpDir = createTempDir();
   const binDir1 = path.join(tmpDir, 'bin1');
   const binDir2 = path.join(tmpDir, 'bin2');
