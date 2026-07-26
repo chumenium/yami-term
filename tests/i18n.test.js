@@ -70,8 +70,73 @@ test('i18n.js - 全en/jaキーが空文字列でない', async (t) => {
   }
 });
 
-test('i18n.js - localeプロパティが"en"または"ja"', async (t) => {
+test('i18n.js - localeプロパティがSUPPORTED_LOCALESに含まれる', async (t) => {
   const i18n = require('../renderer/i18n.js');
 
-  assert.ok(['en', 'ja'].includes(i18n.locale), `locale は "en" または "ja" であるべき`);
+  assert.ok(i18n.SUPPORTED_LOCALES.includes(i18n.locale), `locale は SUPPORTED_LOCALES のいずれかであるべき`);
+});
+
+test('i18n.js - SUPPORTED_LOCALESに主要14言語が含まれる', async (t) => {
+  const i18n = require('../renderer/i18n.js');
+
+  const expected = ['en', 'ja', 'zh-Hans', 'zh-Hant', 'ko', 'es', 'fr', 'de', 'pt', 'ru', 'it', 'id', 'vi', 'hi'];
+  for (const locale of expected) {
+    assert.ok(i18n.SUPPORTED_LOCALES.includes(locale), `SUPPORTED_LOCALES に ${locale} が含まれるべき`);
+  }
+  assert.strictEqual(i18n.SUPPORTED_LOCALES.length, expected.length);
+});
+
+test('i18n.js - 全SUPPORTED_LOCALESのdictキー集合がdict.enと完全一致', async (t) => {
+  const i18n = require('../renderer/i18n.js');
+
+  const enKeys = Object.keys(i18n.dict.en).sort();
+  for (const locale of i18n.SUPPORTED_LOCALES) {
+    assert.ok(i18n.dict[locale], `dict.${locale} が存在すべき`);
+    const keys = Object.keys(i18n.dict[locale]).sort();
+    assert.deepStrictEqual(keys, enKeys, `dict.${locale} のキー集合が dict.en と一致すべき`);
+  }
+});
+
+test('i18n.js - 全SUPPORTED_LOCALESの全キーが空文字列でない', async (t) => {
+  const i18n = require('../renderer/i18n.js');
+
+  for (const locale of i18n.SUPPORTED_LOCALES) {
+    for (const [key, value] of Object.entries(i18n.dict[locale])) {
+      assert.strictEqual(typeof value, 'string', `${locale}.${key} は文字列であるべき`);
+      assert.ok(value.length > 0, `${locale}.${key} は空文字列でないべき`);
+    }
+  }
+});
+
+test('i18n.js - setLocale()で明示的にロケールを切り替えられる', async (t) => {
+  const i18n = require('../renderer/i18n.js');
+
+  i18n.setLocale('ja');
+  assert.strictEqual(i18n.getLocale(), 'ja');
+  assert.strictEqual(i18n.t('settings.title'), i18n.dict.ja['settings.title']);
+
+  i18n.setLocale('zh-Hans');
+  assert.strictEqual(i18n.getLocale(), 'zh-Hans');
+  assert.strictEqual(i18n.t('settings.title'), i18n.dict['zh-Hans']['settings.title']);
+
+  // 後続テストに影響しないよう戻す
+  i18n.setLocale('en');
+});
+
+test('i18n.js - setLocale("auto")はnavigator.language相当(テスト環境ではen)にフォールバックする', async (t) => {
+  const i18n = require('../renderer/i18n.js');
+
+  i18n.setLocale('ja');
+  assert.strictEqual(i18n.getLocale(), 'ja');
+
+  i18n.setLocale('auto');
+  assert.strictEqual(i18n.getLocale(), 'en');
+});
+
+test('i18n.js - setLocale()にサポート外の値を渡すとauto相当にフォールバックする', async (t) => {
+  const i18n = require('../renderer/i18n.js');
+
+  i18n.setLocale('ja');
+  i18n.setLocale('xx-not-supported');
+  assert.strictEqual(i18n.getLocale(), 'en');
 });

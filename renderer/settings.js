@@ -6,6 +6,30 @@ window.YamiSettings = (() => {
 
   const SETTINGS_SCHEMA = [
     {
+      key: 'language',
+      labelKey: 'settings.language',
+      noteKey: 'settings.language.note',
+      type: 'select',
+      options: [
+        { value: 'auto', label: 'Auto' },
+        { value: 'en', label: 'English' },
+        { value: 'ja', label: '日本語' },
+        { value: 'zh-Hans', label: '简体中文' },
+        { value: 'zh-Hant', label: '繁體中文' },
+        { value: 'ko', label: '한국어' },
+        { value: 'es', label: 'Español' },
+        { value: 'fr', label: 'Français' },
+        { value: 'de', label: 'Deutsch' },
+        { value: 'pt', label: 'Português' },
+        { value: 'ru', label: 'Русский' },
+        { value: 'it', label: 'Italiano' },
+        { value: 'id', label: 'Bahasa Indonesia' },
+        { value: 'vi', label: 'Tiếng Việt' },
+        { value: 'hi', label: 'हिन्दी' },
+      ],
+      default: 'auto',
+    },
+    {
       key: 'fontSize',
       labelKey: 'settings.fontSize',
       type: 'slider',
@@ -278,6 +302,13 @@ window.YamiSettings = (() => {
 
       if (schema.type !== 'text') {
         group.appendChild(label);
+      }
+
+      if (schema.noteKey) {
+        const note = document.createElement('div');
+        note.className = 'settings-note';
+        note.textContent = window.YamiI18n?.t?.(schema.noteKey) || '';
+        group.appendChild(note);
       }
 
       card.appendChild(group);

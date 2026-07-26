@@ -493,6 +493,14 @@ body {
   margin: 16px 0;
 }
 
+/* Settings Group: Note (補足テキスト、例: 再起動が必要な設定) */
+.settings-note {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+  margin-top: 4px;
+}
+
 /* Settings: Select Control */
 .settings-select {
   width: 100%;

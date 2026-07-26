@@ -464,3 +464,61 @@ test('config.js - set()でapprovalPatternsに不正な要素があればフィ�
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('config.js - DEFAULTSのlanguageは"auto"', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    assert.strictEqual(config.DEFAULTS.language, 'auto');
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('config.js - set()でサポート対象言語(例: zh-Hans)を設定して反映', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    config.set({ language: 'zh-Hans' });
+
+    const result = config.get();
+    assert.strictEqual(result.language, 'zh-Hans');
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('config.js - set()でサポート外のlanguage値は無視される', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    config.set({ language: 'xx-not-supported' });
+
+    const result = config.get();
+    // 元のDEFAULTS('auto')のまま維持される
+    assert.strictEqual(result.language, 'auto');
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

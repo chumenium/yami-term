@@ -35,6 +35,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // (a) getConfig + 初期タブ作成
   try {
     currentConfig = await window.yamiterm.getConfig();
+
+    // 言語設定を最優先で反映(以降のt()呼び出し全てに影響するため一番最初に行う)
+    if (window.YamiI18n?.setLocale) {
+      window.YamiI18n.setLocale(currentConfig.language);
+    }
+
     await window.YamiTabs.newTab();
     console.log('[yami-term] config loaded and initial tab created');
   } catch (err) {

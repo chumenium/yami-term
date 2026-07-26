@@ -25,33 +25,14 @@ fi
 echo "  ✓ PASS: i18n.js存在・window.YamiI18n定義あり"
 echo ""
 
-# チェック2: dict.ja と dict.en のキー一覧が完全に一致することを確認
+# チェック2: dict内の全ロケールのキー一覧がdict.enと完全に一致することを確認
+# (対応言語数が増減してもキー数固定の"2回出現"前提が崩れないよう、実際にrequireして検証する)
 echo "✓ チェック2: i18n.jsキー整合チェック"
-EN_KEYS=$(grep -oE "'settings\.[a-zA-Z.]+'" "$I18N_FILE" | sort -u | sed -n '/dict\.en/,/^}/p' | grep -oE "'settings\.[a-zA-Z.]+'" | sort -u || true)
-JA_KEYS=$(grep -oE "'settings\.[a-zA-Z.]+'" "$I18N_FILE" | sort -u | sed -n '/dict\.ja/,/^}/p' | grep -oE "'settings\.[a-zA-Z.]+'" | sort -u || true)
-
-# より簡単なチェック：全体のユニークキーを抽出
-TOTAL_KEYS=$(grep -oE "'settings\.[a-zA-Z.]+'" "$I18N_FILE" | sort | uniq -c | awk '{print $1}')
-EN_COUNT=$(echo "$TOTAL_KEYS" | head -1 | tr -d ' ')
-
-# キーの重複チェック（2ずつ出現すればOK）
-KEY_MISMATCH=0
-while IFS= read -r key; do
-  COUNT=$(grep -c "$key" "$I18N_FILE" || echo 0)
-  if [ "$COUNT" -ne 2 ]; then
-    if [ "$KEY_MISMATCH" -eq 0 ]; then
-      echo "  ✗ キーペアの不一致を検出:"
-    fi
-    echo "    - $key (出現回数: $COUNT 回、期待: 2回)"
-    KEY_MISMATCH=1
-  fi
-done < <(grep -oE "'settings\.[a-zA-Z.]+'" "$I18N_FILE" | sort -u)
-
-if [ "$KEY_MISMATCH" -eq 1 ]; then
-  echo "  ✗ FAIL: en/ja間でキーが一致しません"
+if ! node "$SCRIPT_DIR/check-i18n-keys.js" "$I18N_FILE"; then
+  echo "  ✗ FAIL: 全ロケール間でキーが一致しません"
   exit 1
 fi
-echo "  ✓ PASS: dict.en と dict.ja のキーが完全に一致"
+echo "  ✓ PASS: 全ロケールのキーが dict.en と完全に一致"
 echo ""
 
 # チェック3: renderer/settings.js が labelKey を使っていることを確認

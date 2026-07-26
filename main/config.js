@@ -23,7 +23,12 @@ const DEFAULTS = {
     { id: 'claude-code', label: 'Claude Code', pattern: 'Do you want to', enabled: true, builtin: true },
     { id: 'generic-yn', label: 'y/n prompt', pattern: '\\(y/n\\)|\\[y/N\\]|\\[Y/n\\]', enabled: true, builtin: true },
   ],
+  language: 'auto',
 };
+
+// 'auto'はシステム言語(navigator.language)への自動追従。RTL言語(アラビア語等)は
+// レイアウト対応が別途必要になるため今回はスコープ外(将来課題)。
+const ALLOWED_LANGUAGES = ['auto', 'en', 'ja', 'zh-Hans', 'zh-Hant', 'ko', 'es', 'fr', 'de', 'pt', 'ru', 'it', 'id', 'vi', 'hi'];
 
 const CONFIG_FILE = path.join(process.env.HOME, '.yami-term.json');
 
@@ -54,7 +59,7 @@ function set(partial) {
   }
 
   // Whitelist allowed keys
-  const allowedKeys = ['fontSize', 'fontFamily', 'cursorBlink', 'opacity', 'accent', 'shell', 'suggest', 'theme', 'letterSpacing', 'lineHeight', 'scrollback', 'bloomEnabled', 'bloomIntensity', 'launchers', 'approvalPatterns'];
+  const allowedKeys = ['fontSize', 'fontFamily', 'cursorBlink', 'opacity', 'accent', 'shell', 'suggest', 'theme', 'letterSpacing', 'lineHeight', 'scrollback', 'bloomEnabled', 'bloomIntensity', 'launchers', 'approvalPatterns', 'language'];
   const filtered = {};
 
   for (const key of allowedKeys) {
@@ -81,6 +86,12 @@ function set(partial) {
           filtered[key] = approvalPatterns
             .filter(p => p && typeof p.id === 'string' && typeof p.label === 'string' && typeof p.pattern === 'string')
             .map(p => ({ ...p, enabled: p.enabled !== false }));
+        }
+      } else if (key === 'language') {
+        // Validate language: must be 'auto' or a supported locale code
+        const language = partial[key];
+        if (typeof language === 'string' && ALLOWED_LANGUAGES.includes(language)) {
+          filtered[key] = language;
         }
       } else {
         filtered[key] = partial[key];
