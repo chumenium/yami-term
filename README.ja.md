@@ -37,8 +37,8 @@ AI特化型のターミナルエミュレータ(macOS / Windows)。Liquid Glass 
 ### Windows
 
 1. [Releases ページ](https://github.com/chumenium/yami-term/releases) から以下のいずれかをダウンロード:
-   - **インストーラー版**: `yami-term-Setup-<version>.exe`
-   - **ポータブル版**(インストール不要): `yami-term-<version>-portable.exe`
+   - **インストーラー版**: `yami-term-<version>-x64-nsis.exe`
+   - **ポータブル版**(インストール不要): `yami-term-<version>-x64-portable.exe`
 2. 初回起動時に SmartScreen が「WindowsによってPCが保護されました」と表示する場合:
    - **詳細情報** をクリック
    - **実行** をクリック
