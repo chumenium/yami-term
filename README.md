@@ -37,7 +37,7 @@ An AI-focused terminal emulator for macOS / Windows. Liquid Glass UI, a dark the
 ### Windows
 
 1. Download from the [Releases page](https://github.com/chumenium/yami-term/releases):
-   - **Installer**: `yami-term-<version>-x64-nsis.exe`
+   - **Installer**: `yami-term-Setup-<version>-x64.exe`
    - **Portable** (no install needed): `yami-term-<version>-x64-portable.exe`
 2. If Windows SmartScreen says "Windows protected your PC":
    - Click **More info**
