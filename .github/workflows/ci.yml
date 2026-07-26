@@ -28,6 +28,16 @@ jobs:
       - run: npm test
         shell: bash
 
+      - name: Smoke test (Electron launch)
+        shell: bash
+        env:
+          YAMI_TERM_SMOKE: "1"
+        run: |
+          set -e
+          npm start > smoke.log 2>&1
+          cat smoke.log
+          grep -q "SMOKE_OK" smoke.log
+
       - run: bash scripts/check-wiring.sh
         shell: bash
 
