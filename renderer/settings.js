@@ -475,6 +475,33 @@ window.YamiSettings = (() => {
 
     card.appendChild(approvalSection);
 
+    // アップデートセクション追加
+    const updateDivider = document.createElement('div');
+    updateDivider.className = 'settings-divider';
+    card.appendChild(updateDivider);
+
+    const updateSection = document.createElement('div');
+    updateSection.className = 'settings-launcher-section';
+
+    const updateTitle = document.createElement('div');
+    updateTitle.className = 'settings-launcher-title';
+    updateTitle.textContent = window.YamiI18n?.t?.('settings.update.title') || 'Update';
+    updateSection.appendChild(updateTitle);
+
+    const updateStatus = document.createElement('div');
+    updateStatus.className = 'settings-note';
+    updateStatus.id = 'settings-update-status';
+    updateSection.appendChild(updateStatus);
+
+    const updateCheckBtn = document.createElement('button');
+    updateCheckBtn.className = 'update-btn update-btn-secondary';
+    updateCheckBtn.id = 'settings-update-check-btn';
+    updateCheckBtn.textContent = window.YamiI18n?.t?.('settings.update.checkButton') || 'Check for Updates';
+    updateCheckBtn.addEventListener('click', () => checkForUpdateFromSettings(updateStatus, updateCheckBtn));
+    updateSection.appendChild(updateCheckBtn);
+
+    card.appendChild(updateSection);
+
     // Aboutセクション追加
     const aboutSection = document.createElement('div');
     aboutSection.className = 'settings-about';
@@ -505,6 +532,41 @@ window.YamiSettings = (() => {
     }
 
     modal.appendChild(card);
+  }
+
+  async function checkForUpdateFromSettings(statusEl, checkBtn) {
+    checkBtn.disabled = true;
+    statusEl.innerHTML = '';
+    statusEl.textContent = window.YamiI18n?.t?.('settings.update.checking') || 'Checking…';
+
+    try {
+      const result = await window.yamiterm.checkForUpdate();
+      statusEl.innerHTML = '';
+
+      if (result.error) {
+        statusEl.textContent = window.YamiI18n?.t?.('settings.update.error') || 'Check failed';
+      } else if (result.hasUpdate) {
+        const availableTemplate = window.YamiI18n?.t?.('settings.update.available')
+          || 'Version {latest} is available';
+        statusEl.textContent = availableTemplate.replace('{latest}', result.latestVersion);
+
+        const updateNowBtn = document.createElement('button');
+        updateNowBtn.className = 'update-btn update-btn-primary';
+        updateNowBtn.style.marginTop = '8px';
+        updateNowBtn.textContent = window.YamiI18n?.t?.('settings.update.updateButton') || 'Update Now';
+        updateNowBtn.addEventListener('click', () => {
+          window.yamiterm?.openReleasePage?.(result.url);
+        });
+        statusEl.appendChild(document.createElement('br'));
+        statusEl.appendChild(updateNowBtn);
+      } else {
+        statusEl.textContent = window.YamiI18n?.t?.('settings.update.upToDate') || "You're up to date";
+      }
+    } catch (err) {
+      statusEl.textContent = window.YamiI18n?.t?.('settings.update.error') || 'Check failed';
+    } finally {
+      checkBtn.disabled = false;
+    }
   }
 
   function renderLauncherList(launchers) {

@@ -32,6 +32,10 @@ const DEFAULTS = {
     { id: 'generic-yn', label: 'y/n prompt', pattern: '\\(y/n\\)|\\[y/N\\]|\\[Y/n\\]', enabled: true, builtin: true },
   ],
   language: 'auto',
+  // ユーザーが起動時ポップアップで「スキップ」を選んだバージョン(例: "0.7.0")。
+  // 同じバージョンでは再度ポップアップを出さないが、それより新しいリリースが
+  // 出た時は改めて通知するための記録(nullは未スキップ)。
+  skippedUpdateVersion: null,
 };
 
 // 'auto'はシステム言語(navigator.language)への自動追従。RTL言語(アラビア語等)は
@@ -71,7 +75,7 @@ function set(partial) {
   }
 
   // Whitelist allowed keys
-  const allowedKeys = ['fontSize', 'fontFamily', 'cursorBlink', 'opacity', 'accent', 'shell', 'suggest', 'theme', 'letterSpacing', 'lineHeight', 'scrollback', 'bloomEnabled', 'bloomIntensity', 'launchers', 'approvalPatterns', 'language'];
+  const allowedKeys = ['fontSize', 'fontFamily', 'cursorBlink', 'opacity', 'accent', 'shell', 'suggest', 'theme', 'letterSpacing', 'lineHeight', 'scrollback', 'bloomEnabled', 'bloomIntensity', 'launchers', 'approvalPatterns', 'language', 'skippedUpdateVersion'];
   const filtered = {};
 
   for (const key of allowedKeys) {
@@ -104,6 +108,12 @@ function set(partial) {
         const language = partial[key];
         if (typeof language === 'string' && ALLOWED_LANGUAGES.includes(language)) {
           filtered[key] = language;
+        }
+      } else if (key === 'skippedUpdateVersion') {
+        // Validate: must be null or a non-empty string
+        const version = partial[key];
+        if (version === null || typeof version === 'string') {
+          filtered[key] = version;
         }
       } else {
         filtered[key] = partial[key];

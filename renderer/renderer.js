@@ -189,6 +189,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('[yami-term] init failed: YamiSettings', err);
   }
 
+  // (d2) YamiUpdatePopup.init()
+  try {
+    if (window.YamiUpdatePopup && typeof window.YamiUpdatePopup.init === 'function') {
+      window.YamiUpdatePopup.init();
+      console.log('[yami-term] YamiUpdatePopup.init completed');
+    }
+  } catch (err) {
+    console.error('[yami-term] init failed: YamiUpdatePopup', err);
+  }
+
   // (e) YamiShortcuts.init()
   try {
     if (window.YamiShortcuts && typeof window.YamiShortcuts.init === 'function') {

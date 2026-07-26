@@ -68,4 +68,22 @@ contextBridge.exposeInMainWorld('yamiterm', {
       callback(id);
     });
   },
+
+  async checkForUpdate() {
+    return ipcRenderer.invoke('update:check');
+  },
+
+  skipUpdateVersion(version) {
+    ipcRenderer.send('update:skip', { version });
+  },
+
+  openReleasePage(url) {
+    ipcRenderer.send('update:openReleasePage', { url });
+  },
+
+  onUpdateAvailable(callback) {
+    ipcRenderer.on('update:available', (event, payload) => {
+      callback(payload);
+    });
+  },
 });

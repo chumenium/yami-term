@@ -531,6 +531,66 @@ test('config.js - set()でサポート外のlanguage値は無視される', asyn
   }
 });
 
+test('config.js - DEFAULTS.skippedUpdateVersionはnull', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    assert.strictEqual(config.DEFAULTS.skippedUpdateVersion, null);
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('config.js - set()でskippedUpdateVersionを設定して反映', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    config.set({ skippedUpdateVersion: '0.7.0' });
+    assert.strictEqual(config.get().skippedUpdateVersion, '0.7.0');
+
+    delete require.cache[require.resolve('../main/config.js')];
+    const reloaded = require('../main/config.js');
+    assert.strictEqual(reloaded.get().skippedUpdateVersion, '0.7.0');
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('config.js - set()でskippedUpdateVersionに不正な型を渡すと無視される', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    config.set({ skippedUpdateVersion: 12345 });
+
+    const result = config.get();
+    // 元のDEFAULTS(null)のまま維持される
+    assert.strictEqual(result.skippedUpdateVersion, null);
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test('config.js - win32ではDEFAULTS.launchersにfinderが含まれない', async (t) => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
   const originalHome = process.env.HOME;

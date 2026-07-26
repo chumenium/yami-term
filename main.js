@@ -7,10 +7,13 @@ const config = require('./main/config');
 const createApprovalManager = require('./main/approval-manager');
 const createTrayManager = require('./main/tray-manager');
 const createSuggestSource = require('./main/suggest-source');
+const { checkForUpdate } = require('./main/update-checker');
 const pkg = require('./package.json');
 
 // Load config on startup
 config.load();
+
+const UPDATE_REPO = 'chumenium/yami-term';
 
 let mainWindow = null;
 let ptyManager = null;
@@ -110,6 +113,24 @@ function setupPtyManager() {
       approvalManager.remove(payload.id);
       updateTray();
     }
+  });
+}
+
+// 起動時のアップデート確認。app.isPackaged が false(=npm start等の開発実行)の時は
+// 実ネットワーク呼び出しをせずスキップする(CI/開発時のノイズ・スモークテストへの影響を避けるため)。
+async function checkForUpdateOnStartup() {
+  if (!app.isPackaged) return;
+
+  const result = await checkForUpdate({ currentVersion: app.getVersion(), repo: UPDATE_REPO });
+  if (!result.hasUpdate) return;
+
+  const currentConfig = config.get();
+  if (result.latestVersion === currentConfig.skippedUpdateVersion) return;
+
+  sendToRenderer('update:available', {
+    latestVersion: result.latestVersion,
+    currentVersion: result.currentVersion,
+    url: result.url,
   });
 }
 
@@ -229,6 +250,27 @@ function setupIpcChannels() {
     return { success: true, cwd };
   });
 
+  // update:check - 設定画面からの手動アップデート確認(常に実チェックを行う)
+  ipcMain.handle('update:check', async () => {
+    return checkForUpdate({ currentVersion: app.getVersion(), repo: UPDATE_REPO });
+  });
+
+  // update:skip - 起動時ポップアップで「スキップ」を選んだバージョンを記憶する
+  ipcMain.on('update:skip', (event, payload) => {
+    const { version } = payload || {};
+    if (typeof version === 'string') {
+      config.set({ skippedUpdateVersion: version });
+    }
+  });
+
+  // update:openReleasePage - GitHubのリリースページを既定のブラウザで開く
+  ipcMain.on('update:openReleasePage', (event, payload) => {
+    const { url } = payload || {};
+    if (typeof url === 'string' && /^https:\/\/github\.com\//.test(url)) {
+      shell.openExternal(url);
+    }
+  });
+
   // renderer:error - log renderer errors to file
   ipcMain.on('renderer:error', (event, errorInfo) => {
     try {
@@ -264,6 +306,11 @@ app.on('ready', () => {
 
   setupPtyManager();
   setupIpcChannels();
+
+  // 起動時アップデート確認(非同期・起動処理をブロックしない)
+  checkForUpdateOnStartup().catch((err) => {
+    console.error('[yami-term] update check failed:', err);
+  });
 
   // Smoke test mode
   if (process.env.YAMI_TERM_SMOKE === '1') {
