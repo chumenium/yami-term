@@ -19,6 +19,10 @@ const DEFAULTS = {
     { id: 'claude', label: 'Claude Code', type: 'command', command: 'claude', icon: 'claude-icon.png', builtin: true },
     { id: 'finder', label: 'Finder', type: 'finder', icon: null, builtin: true },
   ],
+  approvalPatterns: [
+    { id: 'claude-code', label: 'Claude Code', pattern: 'Do you want to', enabled: true, builtin: true },
+    { id: 'generic-yn', label: 'y/n prompt', pattern: '\\(y/n\\)|\\[y/N\\]|\\[Y/n\\]', enabled: true, builtin: true },
+  ],
 };
 
 const CONFIG_FILE = path.join(process.env.HOME, '.yami-term.json');
@@ -50,7 +54,7 @@ function set(partial) {
   }
 
   // Whitelist allowed keys
-  const allowedKeys = ['fontSize', 'fontFamily', 'cursorBlink', 'opacity', 'accent', 'shell', 'suggest', 'theme', 'letterSpacing', 'lineHeight', 'scrollback', 'bloomEnabled', 'bloomIntensity', 'launchers'];
+  const allowedKeys = ['fontSize', 'fontFamily', 'cursorBlink', 'opacity', 'accent', 'shell', 'suggest', 'theme', 'letterSpacing', 'lineHeight', 'scrollback', 'bloomEnabled', 'bloomIntensity', 'launchers', 'approvalPatterns'];
   const filtered = {};
 
   for (const key of allowedKeys) {
@@ -69,6 +73,14 @@ function set(partial) {
             l && typeof l.id === 'string' && typeof l.label === 'string' && typeof l.type === 'string' &&
             (l.type !== 'command' || typeof l.command === 'string')
           );
+        }
+      } else if (key === 'approvalPatterns') {
+        // Validate approvalPatterns: must be an array of well-formed entries
+        const approvalPatterns = partial[key];
+        if (Array.isArray(approvalPatterns)) {
+          filtered[key] = approvalPatterns
+            .filter(p => p && typeof p.id === 'string' && typeof p.label === 'string' && typeof p.pattern === 'string')
+            .map(p => ({ ...p, enabled: p.enabled !== false }));
         }
       } else {
         filtered[key] = partial[key];

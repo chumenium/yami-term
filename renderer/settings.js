@@ -347,6 +347,70 @@ window.YamiSettings = (() => {
 
     card.appendChild(launcherSection);
 
+    // 承認待ちパターン管理セクション追加
+    const approvalDivider = document.createElement('div');
+    approvalDivider.className = 'settings-divider';
+    card.appendChild(approvalDivider);
+
+    const approvalSection = document.createElement('div');
+    approvalSection.className = 'settings-launcher-section';
+
+    const approvalTitle = document.createElement('div');
+    approvalTitle.className = 'settings-launcher-title';
+    approvalTitle.textContent = window.YamiI18n?.t?.('settings.approvalPatterns.title') || 'Approval Detection';
+    approvalSection.appendChild(approvalTitle);
+
+    const approvalList = document.createElement('div');
+    approvalList.className = 'settings-launcher-list';
+    approvalList.id = 'settings-approval-list';
+    approvalSection.appendChild(approvalList);
+
+    const approvalAddForm = document.createElement('div');
+    approvalAddForm.className = 'settings-launcher-add-form';
+
+    const approvalLabelInput = document.createElement('input');
+    approvalLabelInput.type = 'text';
+    approvalLabelInput.className = 'settings-input';
+    approvalLabelInput.placeholder = window.YamiI18n?.t?.('settings.launchers.labelPlaceholder') || 'Label';
+
+    const approvalPatternInput = document.createElement('input');
+    approvalPatternInput.type = 'text';
+    approvalPatternInput.className = 'settings-input';
+    approvalPatternInput.placeholder = window.YamiI18n?.t?.('settings.approvalPatterns.patternPlaceholder') || 'Regex pattern';
+
+    const approvalAddBtn = document.createElement('button');
+    approvalAddBtn.className = 'settings-launcher-add-btn';
+    approvalAddBtn.textContent = '+';
+    approvalAddBtn.addEventListener('click', async () => {
+      const label = approvalLabelInput.value.trim();
+      const pattern = approvalPatternInput.value.trim();
+      if (!label || !pattern) return;
+
+      try {
+        // eslint-disable-next-line no-new
+        new RegExp(pattern);
+      } catch (err) {
+        return; // 不正な正規表現は追加しない
+      }
+
+      const config = await window.yamiterm.getConfig();
+      const current = Array.isArray(config.approvalPatterns) ? config.approvalPatterns : [];
+      const newPattern = { id: `custom-${Date.now()}`, label, pattern, enabled: true, builtin: false };
+      const updated = [...current, newPattern];
+
+      await window.yamiterm.setConfig({ approvalPatterns: updated });
+      approvalLabelInput.value = '';
+      approvalPatternInput.value = '';
+      renderApprovalList(updated);
+    });
+
+    approvalAddForm.appendChild(approvalLabelInput);
+    approvalAddForm.appendChild(approvalPatternInput);
+    approvalAddForm.appendChild(approvalAddBtn);
+    approvalSection.appendChild(approvalAddForm);
+
+    card.appendChild(approvalSection);
+
     // Aboutセクション追加
     const aboutSection = document.createElement('div');
     aboutSection.className = 'settings-about';
@@ -411,11 +475,55 @@ window.YamiSettings = (() => {
     });
   }
 
+  function renderApprovalList(patterns) {
+    const listEl = document.getElementById('settings-approval-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = '';
+    patterns.forEach(pattern => {
+      const item = document.createElement('div');
+      item.className = 'settings-launcher-item';
+
+      const enabledCheckbox = document.createElement('input');
+      enabledCheckbox.type = 'checkbox';
+      enabledCheckbox.checked = pattern.enabled !== false;
+      enabledCheckbox.addEventListener('change', async () => {
+        const config = await window.yamiterm.getConfig();
+        const current = Array.isArray(config.approvalPatterns) ? config.approvalPatterns : [];
+        const updated = current.map(p => p.id === pattern.id ? { ...p, enabled: enabledCheckbox.checked } : p);
+        await window.yamiterm.setConfig({ approvalPatterns: updated });
+      });
+      item.appendChild(enabledCheckbox);
+
+      const label = document.createElement('span');
+      label.className = 'settings-launcher-item-label';
+      label.textContent = `${pattern.label} (${pattern.pattern})`;
+      item.appendChild(label);
+
+      if (!pattern.builtin) {
+        const delBtn = document.createElement('button');
+        delBtn.className = 'settings-launcher-delete-btn';
+        delBtn.textContent = '×';
+        delBtn.addEventListener('click', async () => {
+          const config = await window.yamiterm.getConfig();
+          const current = Array.isArray(config.approvalPatterns) ? config.approvalPatterns : [];
+          const updated = current.filter(p => p.id !== pattern.id);
+          await window.yamiterm.setConfig({ approvalPatterns: updated });
+          renderApprovalList(updated);
+        });
+        item.appendChild(delBtn);
+      }
+
+      listEl.appendChild(item);
+    });
+  }
+
   async function loadSettings() {
     try {
       const config = await window.yamiterm.getConfig();
 
       renderLauncherList(Array.isArray(config.launchers) ? config.launchers : []);
+      renderApprovalList(Array.isArray(config.approvalPatterns) ? config.approvalPatterns : []);
 
       SETTINGS_SCHEMA.forEach(schema => {
         const value = config[schema.key] !== undefined ? config[schema.key] : schema.default;

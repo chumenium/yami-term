@@ -375,3 +375,92 @@ test('config.js - set()でlaunchersに配列以外を渡すと無視される', 
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('config.js - DEFAULTSにapprovalPatternsのビルトインプリセットが含まれること', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    const defaults = config.DEFAULTS;
+    assert.ok(Array.isArray(defaults.approvalPatterns));
+    assert.strictEqual(defaults.approvalPatterns.length, 2);
+
+    const claudePattern = defaults.approvalPatterns.find(p => p.id === 'claude-code');
+    assert.ok(claudePattern);
+    assert.strictEqual(claudePattern.enabled, true);
+    assert.strictEqual(claudePattern.builtin, true);
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('config.js - set()でカスタムapprovalPatternを追加して反映', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    const custom = { id: 'custom-1', label: 'Aider', pattern: 'Apply edit', enabled: true, builtin: false };
+    config.set({ approvalPatterns: [...config.DEFAULTS.approvalPatterns, custom] });
+
+    const result = config.get();
+    assert.strictEqual(result.approvalPatterns.length, 3);
+    assert.deepStrictEqual(result.approvalPatterns[2], custom);
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('config.js - set()でapprovalPatternsのenabled省略時はtrue扱いになる', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    config.set({ approvalPatterns: [{ id: 'x', label: 'X', pattern: 'foo' }] });
+
+    const result = config.get();
+    assert.strictEqual(result.approvalPatterns[0].enabled, true);
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('config.js - set()でapprovalPatternsに不正な要素があればフィルタされる', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-config-'));
+  const originalHome = process.env.HOME;
+
+  try {
+    process.env.HOME = tmpDir;
+    delete require.cache[require.resolve('../main/config.js')];
+    const config = require('../main/config.js');
+
+    const malformed = { id: 'bad', label: 'Bad' }; // pattern欠落
+    const valid = { id: 'ok', label: 'OK', pattern: 'foo' };
+    config.set({ approvalPatterns: [malformed, valid] });
+
+    const result = config.get();
+    assert.strictEqual(result.approvalPatterns.length, 1);
+    assert.strictEqual(result.approvalPatterns[0].id, 'ok');
+  } finally {
+    process.env.HOME = originalHome;
+    delete require.cache[require.resolve('../main/config.js')];
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

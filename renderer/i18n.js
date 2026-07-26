@@ -25,6 +25,8 @@ const YamiI18nImpl = (() => {
       'settings.launchers.labelPlaceholder': 'Label',
       'settings.launchers.commandPlaceholder': 'Command',
       'palette.placeholder': 'Search a command to run…',
+      'settings.approvalPatterns.title': 'Approval Detection',
+      'settings.approvalPatterns.patternPlaceholder': 'Regex pattern',
     },
     ja: {
       'settings.title': '設定',
@@ -49,6 +51,8 @@ const YamiI18nImpl = (() => {
       'settings.launchers.labelPlaceholder': 'ラベル',
       'settings.launchers.commandPlaceholder': 'コマンド',
       'palette.placeholder': 'コマンドを検索して起動…',
+      'settings.approvalPatterns.title': '承認待ち検知',
+      'settings.approvalPatterns.patternPlaceholder': '正規表現パターン',
     },
   };
 

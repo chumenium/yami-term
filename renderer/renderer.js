@@ -216,4 +216,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (err) {
     console.warn('[yami-term] empty-state i18n failed:', err);
   }
+
+  // (h) メニューバートレイからのタブジャンプ配線
+  try {
+    if (window.yamiterm?.onTrayActivateTab) {
+      window.yamiterm.onTrayActivateTab(id => {
+        if (window.YamiTabs && typeof window.YamiTabs.activate === 'function') {
+          window.YamiTabs.activate(id);
+        }
+      });
+      console.log('[yami-term] onTrayActivateTab wired');
+    }
+  } catch (err) {
+    console.error('[yami-term] onTrayActivateTab wiring failed:', err);
+  }
 });

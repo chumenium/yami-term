@@ -58,4 +58,10 @@ contextBridge.exposeInMainWorld('yamiterm', {
   async revealInFinder(id) {
     return ipcRenderer.invoke('term:revealInFinder', { id });
   },
+
+  onTrayActivateTab(callback) {
+    ipcRenderer.on('tray:activateTab', (event, { id }) => {
+      callback(id);
+    });
+  },
 });

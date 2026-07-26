@@ -4,6 +4,8 @@ const fs = require('fs');
 const { execFileSync } = require('child_process');
 const PtyManager = require('./main/pty-manager');
 const config = require('./main/config');
+const createApprovalManager = require('./main/approval-manager');
+const createTrayManager = require('./main/tray-manager');
 const pkg = require('./package.json');
 
 // Load config on startup
@@ -11,6 +13,21 @@ config.load();
 
 let mainWindow = null;
 let ptyManager = null;
+let approvalManager = null;
+let trayManager = null;
+
+function showAndFocusWindow() {
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function updateTray() {
+  if (trayManager && approvalManager) {
+    trayManager.updateState(approvalManager.getAwaitingList());
+  }
+}
 
 // Helper to clamp cols/rows to 1-512
 function clampDimension(value) {
@@ -68,11 +85,18 @@ function setupPtyManager() {
   // Forward PTY data to renderer
   ptyManager.on('data', (payload) => {
     sendToRenderer('term:data', payload);
+    if (approvalManager && approvalManager.feed(payload.id, payload.data)) {
+      updateTray();
+    }
   });
 
   // Forward PTY exit to renderer
   ptyManager.on('exit', (payload) => {
     sendToRenderer('term:exit', payload);
+    if (approvalManager) {
+      approvalManager.remove(payload.id);
+      updateTray();
+    }
   });
 }
 
@@ -92,6 +116,10 @@ function setupIpcChannels() {
     // Validate data: must be string and <= 64KB
     if (typeof data === 'string' && data.length <= 65536) {
       ptyManager.write(id, data);
+      // ユーザーが応答したとみなし、承認待ち状態を即クリアする
+      if (approvalManager && approvalManager.clear(id)) {
+        updateTray();
+      }
     }
   });
 
@@ -109,6 +137,10 @@ function setupIpcChannels() {
   ipcMain.on('term:close', (event, payload) => {
     const { id } = payload;
     ptyManager.dispose(id);
+    if (approvalManager) {
+      approvalManager.remove(id);
+      updateTray();
+    }
   });
 
   // config:get - get current config
@@ -119,6 +151,9 @@ function setupIpcChannels() {
   // config:set - set partial config and broadcast change
   ipcMain.handle('config:set', (event, partial) => {
     config.set(partial);
+    if (approvalManager) {
+      approvalManager.refreshPatterns();
+    }
     // Broadcast config change to all windows
     sendToRenderer('config:changed', config.get());
   });
@@ -199,6 +234,16 @@ function setupIpcChannels() {
 
 app.on('ready', () => {
   createWindow();
+
+  approvalManager = createApprovalManager(() => config.get().approvalPatterns);
+  trayManager = createTrayManager({
+    iconPath: path.join(__dirname, 'renderer', 'tray-icon.png'),
+    onActivateTab: (id) => {
+      sendToRenderer('tray:activateTab', { id });
+    },
+    onShowWindow: showAndFocusWindow,
+  });
+
   setupPtyManager();
   setupIpcChannels();
 
@@ -212,6 +257,9 @@ app.on('ready', () => {
 app.on('window-all-closed', () => {
   if (ptyManager) {
     ptyManager.disposeAll();
+  }
+  if (trayManager) {
+    trayManager.destroy();
   }
   app.quit();
 });
