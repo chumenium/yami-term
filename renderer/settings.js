@@ -1,6 +1,7 @@
 window.YamiSettings = (() => {
   let isOpen = false;
   let debounceTimer = null;
+  let pendingChanges = {};
   let initialized = false;
   const DEBOUNCE_MS = 200;
 
@@ -679,13 +680,22 @@ window.YamiSettings = (() => {
   }
 
   function onSettingChanged(key, value) {
+    // debounceTimerは全キー共通の1本。キー別に持たず単純に上書きしていたため、
+    // 200ms以内に別のキーを変更すると先の変更のsetTimeoutごとclearTimeoutされ、
+    // そのキーの保存が一切実行されずに消えてしまっていた(「設定が保存されない」報告の原因)。
+    // 変更内容はpendingChangesに蓄積し、タイマー発火時にまとめて1回で保存することで解決する。
+    pendingChanges[key] = value;
+
     if (debounceTimer) {
       clearTimeout(debounceTimer);
     }
 
     debounceTimer = setTimeout(async () => {
+      const changes = pendingChanges;
+      pendingChanges = {};
+      debounceTimer = null;
       try {
-        await window.yamiterm.setConfig({ [key]: value });
+        await window.yamiterm.setConfig(changes);
       } catch (err) {
         console.error('Failed to save setting:', err);
       }

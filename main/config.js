@@ -125,7 +125,9 @@ function set(partial) {
   try {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
   } catch (err) {
-    // ignore write errors
+    // 書き込み失敗してもアプリ自体は継続させるが、原因調査できるようログには残す
+    // (設定が保存されない場合の切り分け用)。
+    console.error('[yami-term] failed to write config file:', err);
   }
 }
 
