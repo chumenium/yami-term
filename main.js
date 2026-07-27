@@ -8,6 +8,7 @@ const createApprovalManager = require('./main/approval-manager');
 const createTrayManager = require('./main/tray-manager');
 const createSuggestSource = require('./main/suggest-source');
 const { checkForUpdate } = require('./main/update-checker');
+const themes = require('./renderer/themes');
 const pkg = require('./package.json');
 
 // Load config on startup
@@ -52,12 +53,31 @@ function clampDimension(value) {
   return Math.max(1, Math.min(512, parsed));
 }
 
+// 選択中テーマの背景色(不透明16進)を返す。BrowserWindowのbackgroundColorに使う。
+function resolveWindowBackgroundColor() {
+  const currentConfig = config.get();
+  const theme = themes.getById(currentConfig.theme || themes.DEFAULT_ID);
+  return theme.xterm.background;
+}
+
 function createWindow() {
+  const isMac = process.platform === 'darwin';
+
   mainWindow = new BrowserWindow({
-    vibrancy: 'fullscreen-ui',
-    titleBarStyle: 'hiddenInset',
-    backgroundColor: '#00000000',
-    trafficLightPosition: { x: 16, y: 14 },
+    // vibrancy/titleBarStyle('hiddenInset')/trafficLightPositionはmacOS専用のElectron API。
+    // Windows/Linuxではvibrancyが効かないままbackgroundColorの透過(#00000000)だけが残ると
+    // ウィンドウ合成が不定になり黒つぶれ・チラつき等の表示崩れの原因になるため、
+    // 非macOSではテーマの背景色を不透明で指定し、標準タイトルバーにフォールバックする。
+    ...(isMac
+      ? {
+        vibrancy: 'fullscreen-ui',
+        titleBarStyle: 'hiddenInset',
+        backgroundColor: '#00000000',
+        trafficLightPosition: { x: 16, y: 14 },
+      }
+      : {
+        backgroundColor: resolveWindowBackgroundColor(),
+      }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -191,6 +211,11 @@ function setupIpcChannels() {
     if ('shell' in partial) {
       // シェルが変わったら履歴ファイルも変わるためsuggestSourceを再構築する
       rebuildSuggestSource();
+    }
+    if ('theme' in partial && process.platform !== 'darwin' && mainWindow && !mainWindow.isDestroyed()) {
+      // 非macOSはvibrancyが無くネイティブウィンドウ背景がテーマ色そのものなので、
+      // テーマ変更時にbackgroundColorも追従させる(macOSは透過のままなので不要)。
+      mainWindow.setBackgroundColor(resolveWindowBackgroundColor());
     }
     // Broadcast config change to all windows
     sendToRenderer('config:changed', config.get());
