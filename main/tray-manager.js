@@ -10,6 +10,7 @@ function createTrayManager({ iconPath, onActivateTab, onShowWindow }) {
   tray.setToolTip('yami-term');
 
   let awaitingList = []; // [{ id, snippet }]
+  let destroyed = false;
 
   tray.on('click', () => {
     if (awaitingList.length === 0) {
@@ -32,6 +33,11 @@ function createTrayManager({ iconPath, onActivateTab, onShowWindow }) {
   });
 
   function updateState(newAwaitingList) {
+    // アプリ終了時、destroy()後にptyの非同期'exit'イベント経由で呼ばれることがある
+    // (window-all-closedでtray.destroy()した後もkill()がまだ完了していないpty分の
+    // 'exit'がやって来る)。破棄済みのTrayを操作すると例外を投げるため早期returnする。
+    if (destroyed) return;
+
     awaitingList = Array.isArray(newAwaitingList) ? newAwaitingList : [];
 
     // setTitle()はmacOS専用API(他OSでは無視される)。アイコン自体に色付きバッジ画像を
@@ -47,6 +53,7 @@ function createTrayManager({ iconPath, onActivateTab, onShowWindow }) {
   }
 
   function destroy() {
+    destroyed = true;
     tray.destroy();
   }
 
