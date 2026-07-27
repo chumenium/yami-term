@@ -16,6 +16,13 @@ config.load();
 
 const UPDATE_REPO = 'chumenium/yami-term';
 
+// 起動時チェックの結果を一時保持する。rendererの初期化(YamiUpdatePopup.init()での
+// onUpdateAvailable登録)より先にsendToRenderer('update:available', ...)が届くと、
+// Electronのipcrenderer.onはリスナー登録前のメッセージをバッファしないため
+// 通知が消えてしまう(mainプロセスの実ネットワーク呼び出しの方がrenderer初期化より
+// 速く終わるとレースに負ける)。rendererが起動後にpullでも取得できるようにする。
+let pendingUpdateNotification = null;
+
 let mainWindow = null;
 let ptyManager = null;
 let approvalManager = null;
@@ -147,11 +154,12 @@ async function checkForUpdateOnStartup() {
   const currentConfig = config.get();
   if (result.latestVersion === currentConfig.skippedUpdateVersion) return;
 
-  sendToRenderer('update:available', {
+  pendingUpdateNotification = {
     latestVersion: result.latestVersion,
     currentVersion: result.currentVersion,
     url: result.url,
-  });
+  };
+  sendToRenderer('update:available', pendingUpdateNotification);
 }
 
 function setupIpcChannels() {
@@ -278,6 +286,12 @@ function setupIpcChannels() {
   // update:check - 設定画面からの手動アップデート確認(常に実チェックを行う)
   ipcMain.handle('update:check', async () => {
     return checkForUpdate({ currentVersion: app.getVersion(), repo: UPDATE_REPO });
+  });
+
+  // update:getPendingNotification - 起動時チェックがrenderer初期化より先に完了していた場合に備え、
+  // rendererから能動的に取得できるようにする(update:availableイベントとの競合対策)
+  ipcMain.handle('update:getPendingNotification', () => {
+    return pendingUpdateNotification;
   });
 
   // update:skip - 起動時ポップアップで「スキップ」を選んだバージョンを記憶する

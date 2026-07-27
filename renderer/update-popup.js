@@ -1,5 +1,6 @@
 window.YamiUpdatePopup = (() => {
   let initialized = false;
+  let shown = false;
 
   function init() {
     if (initialized) return;
@@ -10,9 +11,23 @@ window.YamiUpdatePopup = (() => {
     window.yamiterm.onUpdateAvailable(payload => {
       show(payload);
     });
+
+    // mainプロセスの起動時チェックは実ネットワーク呼び出しのため、rendererの初期化
+    // (このリスナー登録)より先に終わってしまうことがある。その場合update:available
+    // イベントはリスナー登録前に届いて消えてしまうため、能動的に取りに行って補う。
+    if (window.yamiterm?.getPendingUpdateNotification) {
+      window.yamiterm.getPendingUpdateNotification().then(payload => {
+        if (payload) show(payload);
+      }).catch(() => {});
+    }
   }
 
   function show({ latestVersion, currentVersion, url }) {
+    // update:availableイベントとgetPendingUpdateNotificationの両方から
+    // 同じ通知が届き得るため、二重表示を防ぐ
+    if (shown) return;
+    shown = true;
+
     const modal = document.getElementById('update-modal');
     if (!modal) return;
 

@@ -86,4 +86,8 @@ contextBridge.exposeInMainWorld('yamiterm', {
       callback(payload);
     });
   },
+
+  async getPendingUpdateNotification() {
+    return ipcRenderer.invoke('update:getPendingNotification');
+  },
 });
