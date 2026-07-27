@@ -164,7 +164,7 @@ npm run dist:win     # Windows
 
 ## 🔧 Troubleshooting
 
-### macOS: "yami-term is damaged and can't be opened" / "can't verify the developer"
+### macOS: "yami-term is damaged and can't be opened" / "can't verify the developer" / "Apple could not verify it is free of malware"
 
 macOS Gatekeeper can flag the app on first launch. Two ways to fix it:
 
