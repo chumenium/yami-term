@@ -125,62 +125,89 @@ async function listDir(dirPath) {
   }
 }
 
+// watchFile/unwatchFile both need to await normalizeAndResolvePath() before
+// touching the `watchers` ref-count map. Two calls for the same path fired
+// without awaiting the first (as callers reasonably do, since the path is
+// already known synchronously) would otherwise race: both would see no
+// existing entry and create two independent fs.watch() instances, and the
+// second `watchers.set()` clobbers the reference to the first — leaking a
+// watcher that never gets closed and keeps the event loop alive forever.
+// Serializing operations per raw (pre-resolve) path closes that race.
+const pathOperationQueues = new Map(); // rawPath -> Promise chain
+
+function serializeByPath(rawPath, fn) {
+  const prev = pathOperationQueues.get(rawPath) || Promise.resolve();
+  const run = prev.then(fn, fn);
+  pathOperationQueues.set(
+    rawPath,
+    run.then(
+      () => {},
+      () => {}
+    )
+  );
+  return run;
+}
+
 async function watchFile(filePath, onChange) {
-  const normalPath = await normalizeAndResolvePath(filePath);
+  return serializeByPath(filePath, async () => {
+    const normalPath = await normalizeAndResolvePath(filePath);
 
-  if (watchers.has(normalPath)) {
-    const record = watchers.get(normalPath);
-    record.count += 1;
-    return;
-  }
+    if (watchers.has(normalPath)) {
+      const record = watchers.get(normalPath);
+      record.count += 1;
+      return;
+    }
 
-  try {
-    const watcher = fs.watch(normalPath, (eventType) => {
-      if (eventType === 'change') {
-        onChange();
-      }
-    });
+    try {
+      const watcher = fs.watch(normalPath, (eventType) => {
+        if (eventType === 'change') {
+          onChange();
+        }
+      });
 
-    // Handle watcher errors to prevent resource leaks
-    watcher.on('error', (err) => {
-      console.error(`Watch error for ${normalPath}: ${err.message}`);
-      watcher.close();
-      watchers.delete(normalPath);
-    });
+      // Handle watcher errors to prevent resource leaks
+      watcher.on('error', (err) => {
+        console.error(`Watch error for ${normalPath}: ${err.message}`);
+        watcher.close();
+        watchers.delete(normalPath);
+      });
 
-    watchers.set(normalPath, { watcher, count: 1 });
-  } catch (err) {
-    console.error(`Failed to watch file ${filePath}: ${err.message}`);
-    throw err;
-  }
+      watchers.set(normalPath, { watcher, count: 1 });
+    } catch (err) {
+      console.error(`Failed to watch file ${filePath}: ${err.message}`);
+      throw err;
+    }
+  });
 }
 
 async function unwatchFile(filePath) {
-  let normalPath;
-  try {
-    normalPath = await normalizeAndResolvePath(filePath);
-  } catch (err) {
-    // If path normalization fails (e.g., file deleted), we can't locate the watcher.
-    // Log the error but don't throw, since the goal is to unwatch anyway.
-    console.warn(`Unable to normalize path for unwatchFile: ${filePath}: ${err.message}`);
-    return;
-  }
-
-  if (!watchers.has(normalPath)) {
-    return;
-  }
-
-  const record = watchers.get(normalPath);
-  record.count -= 1;
-
-  if (record.count <= 0) {
+  return serializeByPath(filePath, async () => {
+    let normalPath;
     try {
-      record.watcher.close();
+      normalPath = await normalizeAndResolvePath(filePath);
     } catch (err) {
-      console.error(`Failed to close watcher for ${normalPath}: ${err.message}`);
+      // If path normalization fails (e.g., file deleted), we can't locate the watcher.
+      // Log the error but don't throw, since the goal is to unwatch anyway.
+      console.warn(`Unable to normalize path for unwatchFile: ${filePath}: ${err.message}`);
+      return;
     }
-    watchers.delete(normalPath);
-  }
+
+    if (!watchers.has(normalPath)) {
+      return;
+    }
+
+    const record = watchers.get(normalPath);
+    record.count -= 1;
+
+    if (record.count <= 0) {
+      try {
+        record.watcher.close();
+      } catch (err) {
+        console.error(`Failed to close watcher for ${normalPath}: ${err.message}`);
+      }
+      watchers.delete(normalPath);
+    }
+  });
 }
 
 // O_NOFOLLOW closes the TOCTOU gap between the symlink check in

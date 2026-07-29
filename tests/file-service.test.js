@@ -100,7 +100,7 @@ test('file-service.js - watchFile/unwatchFile: ファイル変更時にコール
       callCount += 1;
     };
 
-    watchFile(testFile, onChange);
+    await watchFile(testFile, onChange);
 
     // ファイルの内容を変更
     await new Promise((resolve) => {
@@ -115,7 +115,7 @@ test('file-service.js - watchFile/unwatchFile: ファイル変更時にコール
     assert.ok(callCount > 0);
 
     // 後処理
-    unwatchFile(testFile);
+    await unwatchFile(testFile);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -133,7 +133,7 @@ test('file-service.js - unwatchFile後はコールバックが呼ばれなくな
       callCount += 1;
     };
 
-    watchFile(testFile, onChange);
+    await watchFile(testFile, onChange);
 
     // 1回目の変更
     await new Promise((resolve) => {
@@ -146,7 +146,7 @@ test('file-service.js - unwatchFile後はコールバックが呼ばれなくな
     const callCountAfterFirstChange = callCount;
 
     // unwatchFileで監視を停止
-    unwatchFile(testFile);
+    await unwatchFile(testFile);
 
     // 2回目の変更（watcherが削除されているはず）
     await new Promise((resolve) => {
@@ -182,8 +182,8 @@ test('file-service.js - 同じpathへの複数watchFile呼び出しがref-count�
     };
 
     // 同じファイルに対して2回watchFileを呼び出し（実装はref-countで管理）
-    watchFile(testFile, onChange1);
-    watchFile(testFile, onChange2);
+    await watchFile(testFile, onChange1);
+    await watchFile(testFile, onChange2);
 
     // ファイルを変更
     await new Promise((resolve) => {
@@ -199,7 +199,7 @@ test('file-service.js - 同じpathへの複数watchFile呼び出しがref-count�
     assert.ok(callCount1 > 0);
 
     // 1回目のunwatchFile（count: 2 -> 1）
-    unwatchFile(testFile);
+    await unwatchFile(testFile);
 
     const callCountAfterFirstUnwatch = callCount1;
 
@@ -215,7 +215,7 @@ test('file-service.js - 同じpathへの複数watchFile呼び出しがref-count�
     assert.ok(callCount1 > callCountAfterFirstUnwatch);
 
     // 2回目のunwatchFile（count: 1 -> 0、watcher削除）
-    unwatchFile(testFile);
+    await unwatchFile(testFile);
 
     const callCountAfterSecondUnwatch = callCount1;
 
