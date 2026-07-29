@@ -77,6 +77,7 @@ body {
   gap: 8px;
   padding: 0 12px;
   height: 28px;
+  max-width: 200px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--color-border);
@@ -110,6 +111,18 @@ body {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.tab-title[contenteditable="true"] {
+  outline: 1px solid rgba(255, 121, 198, 0.5);
+  outline-offset: -1px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  padding: 0 2px;
+  cursor: text;
+  user-select: text;
+  overflow: auto;
+  white-space: nowrap;
 }
 
 .tab-close {

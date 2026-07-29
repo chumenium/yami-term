@@ -6,6 +6,7 @@ const {
   removeTab,
   setActive,
   renameTab,
+  updateAutoTitle,
   moveTab,
 } = require('../renderer/tabs-state.js');
 
@@ -22,12 +23,12 @@ test('addTab() adds tab to end and sets activeId', () => {
   const s1 = addTab(s0, { id: 'tab1', title: 'Tab 1' });
 
   assert.strictEqual(s1.tabs.length, 1);
-  assert.deepStrictEqual(s1.tabs[0], { id: 'tab1', title: 'Tab 1' });
+  assert.deepStrictEqual(s1.tabs[0], { id: 'tab1', title: 'Tab 1', manuallyRenamed: false });
   assert.strictEqual(s1.activeId, 'tab1');
 
   const s2 = addTab(s1, { id: 'tab2', title: 'Tab 2' });
   assert.strictEqual(s2.tabs.length, 2);
-  assert.deepStrictEqual(s2.tabs[1], { id: 'tab2', title: 'Tab 2' });
+  assert.deepStrictEqual(s2.tabs[1], { id: 'tab2', title: 'Tab 2', manuallyRenamed: false });
   assert.strictEqual(s2.activeId, 'tab2');
 });
 
@@ -48,8 +49,8 @@ test('removeTab() removes tab from middle', () => {
   const s_after = removeTab(s, 'tab2');
 
   assert.strictEqual(s_after.tabs.length, 2);
-  assert.deepStrictEqual(s_after.tabs[0], { id: 'tab1', title: 'Tab 1' });
-  assert.deepStrictEqual(s_after.tabs[1], { id: 'tab3', title: 'Tab 3' });
+  assert.deepStrictEqual(s_after.tabs[0], { id: 'tab1', title: 'Tab 1', manuallyRenamed: false });
+  assert.deepStrictEqual(s_after.tabs[1], { id: 'tab3', title: 'Tab 3', manuallyRenamed: false });
   assert.strictEqual(s_after.activeId, 'tab3');
 });
 
@@ -256,4 +257,111 @@ test('all functions maintain immutability with Object.freeze', () => {
   const s3 = removeTab(s2, 'tab1');
   assert.strictEqual(s2.tabs.length, 2);
   assert.strictEqual(s3.tabs.length, 1);
+});
+
+test('addTab() creates tab with manuallyRenamed: false', () => {
+  const s0 = initialState();
+  const s1 = addTab(s0, { id: 'tab1', title: 'Tab 1' });
+
+  assert.strictEqual(s1.tabs[0].manuallyRenamed, false);
+});
+
+test('renameTab() sets manuallyRenamed to true and updates title', () => {
+  let s = initialState();
+  s = addTab(s, { id: 'tab1', title: 'Original Title' });
+
+  const s_after = renameTab(s, 'tab1', 'New Title');
+
+  assert.strictEqual(s_after.tabs[0].title, 'New Title');
+  assert.strictEqual(s_after.tabs[0].manuallyRenamed, true);
+});
+
+test('updateAutoTitle() updates title when manuallyRenamed: false', () => {
+  let s = initialState();
+  s = addTab(s, { id: 'tab1', title: 'Auto Title 1' });
+
+  const s_after = updateAutoTitle(s, 'tab1', 'Auto Title 2');
+
+  assert.strictEqual(s_after.tabs[0].title, 'Auto Title 2');
+  assert.strictEqual(s_after.tabs[0].manuallyRenamed, false);
+});
+
+test('updateAutoTitle() does not update title when manuallyRenamed: true', () => {
+  let s = initialState();
+  s = addTab(s, { id: 'tab1', title: 'Manual Title' });
+  s = renameTab(s, 'tab1', 'Manual Title');
+
+  const s_after = updateAutoTitle(s, 'tab1', 'Auto Title');
+
+  assert.strictEqual(s_after.tabs[0].title, 'Manual Title');
+  assert.strictEqual(s_after.tabs[0].manuallyRenamed, true);
+});
+
+test('updateAutoTitle() with non-existent id returns state unchanged', () => {
+  let s = initialState();
+  s = addTab(s, { id: 'tab1', title: 'Tab 1' });
+  const original_tabs = s.tabs;
+
+  const s_after = updateAutoTitle(s, 'non-existent', 'New Title');
+
+  assert.deepStrictEqual(s_after.tabs, s.tabs);
+  assert.notStrictEqual(s_after.tabs, original_tabs);
+});
+
+test('updateAutoTitle() does not mutate original state', () => {
+  let s = initialState();
+  s = addTab(s, { id: 'tab1', title: 'Auto Title 1' });
+  const original_title = s.tabs[0].title;
+  const original_tabs = s.tabs;
+
+  const s_after = updateAutoTitle(s, 'tab1', 'Auto Title 2');
+
+  assert.strictEqual(s.tabs[0].title, original_title);
+  assert.notStrictEqual(s_after.tabs, original_tabs);
+  assert.notStrictEqual(s_after.tabs[0], original_tabs[0]);
+});
+
+test('renameTab() with empty string reverts manuallyRenamed to false', () => {
+  let s = initialState();
+  s = addTab(s, { id: 'tab1', title: 'Original Title' });
+  // First, rename manually
+  s = renameTab(s, 'tab1', 'Manual Title');
+  assert.strictEqual(s.tabs[0].manuallyRenamed, true);
+
+  // Then, renameTab with empty string to revert to auto mode
+  const s_after = renameTab(s, 'tab1', '');
+
+  assert.strictEqual(s_after.tabs[0].manuallyRenamed, false);
+  assert.strictEqual(s_after.tabs[0].title, 'Manual Title');
+});
+
+test('renameTab() with whitespace-only string reverts manuallyRenamed to false', () => {
+  let s = initialState();
+  s = addTab(s, { id: 'tab1', title: 'Original Title' });
+  s = renameTab(s, 'tab1', 'Manual Title');
+  assert.strictEqual(s.tabs[0].manuallyRenamed, true);
+
+  const s_after = renameTab(s, 'tab1', '   ');
+
+  assert.strictEqual(s_after.tabs[0].manuallyRenamed, false);
+  assert.strictEqual(s_after.tabs[0].title, 'Manual Title');
+});
+
+test('updateAutoTitle() resumes auto update after manual rename was reverted with empty string', () => {
+  let s = initialState();
+  s = addTab(s, { id: 'tab1', title: 'Auto Title 1' });
+
+  // Manually rename
+  s = renameTab(s, 'tab1', 'Manual Title');
+  assert.strictEqual(s.tabs[0].manuallyRenamed, true);
+
+  // Revert manual rename by passing empty string
+  s = renameTab(s, 'tab1', '');
+  assert.strictEqual(s.tabs[0].manuallyRenamed, false);
+
+  // Now updateAutoTitle should work again
+  const s_after = updateAutoTitle(s, 'tab1', 'Auto Title 2');
+
+  assert.strictEqual(s_after.tabs[0].title, 'Auto Title 2');
+  assert.strictEqual(s_after.tabs[0].manuallyRenamed, false);
 });

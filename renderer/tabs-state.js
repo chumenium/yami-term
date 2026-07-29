@@ -6,7 +6,7 @@ function initialState() {
 }
 
 function addTab(state, { id, title }) {
-  const newTabs = [...state.tabs, { id, title }];
+  const newTabs = [...state.tabs, { id, title, manuallyRenamed: false }];
   return {
     tabs: newTabs,
     activeId: id,
@@ -44,9 +44,26 @@ function setActive(state, id) {
 }
 
 function renameTab(state, id, title) {
-  const newTabs = state.tabs.map(tab =>
-    tab.id === id ? { ...tab, title } : tab
-  );
+  const trimmed = (title || '').trim();
+  const newTabs = state.tabs.map(tab => {
+    if (tab.id !== id) return tab;
+    if (!trimmed) {
+      // 空文字なら手動リネームを解除し、自動モードに戻す
+      return { ...tab, manuallyRenamed: false };
+    }
+    return { ...tab, title: trimmed, manuallyRenamed: true };
+  });
+  return {
+    tabs: newTabs,
+    activeId: state.activeId,
+  };
+}
+
+function updateAutoTitle(state, id, title) {
+  const newTabs = state.tabs.map(tab => {
+    if (tab.id !== id || tab.manuallyRenamed) return tab;
+    return { ...tab, title };
+  });
   return {
     tabs: newTabs,
     activeId: state.activeId,
@@ -78,6 +95,7 @@ if (typeof module !== 'undefined' && module.exports) {
     removeTab,
     setActive,
     renameTab,
+    updateAutoTitle,
     moveTab,
   };
 } else {
@@ -87,6 +105,7 @@ if (typeof module !== 'undefined' && module.exports) {
     removeTab,
     setActive,
     renameTab,
+    updateAutoTitle,
     moveTab,
   };
 }

@@ -9,7 +9,7 @@ An AI-focused terminal emulator for macOS / Windows. Liquid Glass UI, a dark the
 ## ✨ Features
 
 - **Liquid Glass UI** — a modern dark theme (macOS gets true vibrancy/glass blur; Windows renders with the standard window frame)
-- **Multi-tab** — manage multiple shell sessions as tabs, reorderable via drag-and-drop
+- **Multi-tab** — manage multiple shell sessions as tabs, reorderable via drag-and-drop. Tab titles update automatically when programs emit OSC sequences; you can also double-click a tab to rename it manually
 - **Tool launcher + command palette** 🚀 — launch Claude Code with one click, or add your own custom commands from Settings. `Cmd/Ctrl+Shift+K` opens a searchable command palette for anything you've registered
 - **Menu bar approval-wait indicator** 🔔 — the tray icon changes when a running AI tool (e.g. Claude Code) is waiting for your approval in any tab; click it to jump straight there
 - **GUI settings modal** — `Cmd/Ctrl+,` opens the settings panel, organized into categories (font, appearance, terminal, language, etc.), auto-saved to `~/.yami-term.json`

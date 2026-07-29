@@ -5,6 +5,16 @@ window.YamiTabs = (() => {
   let resizeObservers = new Map();
   let initialized = false;
   let resizerInitialized = false;
+  let editingTabId = null;
+
+  function sanitizeTitle(title) {
+    if (!title) return '';
+    // C0/C1制御文字と書式制御文字(RLO/ZWSP等のなりすまし文字)を除去
+    let cleaned = title.replace(/[\p{Cc}\p{Cf}]/gu, '').trim();
+    // 先頭の装飾記号(絵文字/記号のみ)を除去。ラテン文字・キリル文字・ハングルは保持
+    cleaned = cleaned.replace(/^[\p{So}\p{Sk}️\s]+/u, '');
+    return cleaned.slice(0, 60);
+  }
 
   function initResizer() {
     if (resizerInitialized) return;
@@ -110,6 +120,7 @@ window.YamiTabs = (() => {
   }
 
   async function newTab() {
+    editingTabId = null;
     try {
       const { id } = await window.yamiterm.createTerm();
       const config = await window.yamiterm.getConfig();
@@ -147,7 +158,24 @@ window.YamiTabs = (() => {
         window.yamiterm.write(id, data);
       });
 
+      terminal.onTitleChange(title => {
+        // 手動編集中なら自動更新をスキップ
+        if (editingTabId === id) return;
+
+        const inst = termInstances.get(id);
+        if (!inst) return;
+
+        clearTimeout(inst.titleDebounceTimer);
+        inst.titleDebounceTimer = setTimeout(() => {
+          const sanitized = sanitizeTitle(title);
+          if (!sanitized || sanitized.startsWith('Claude Code')) return;
+          state = TabsState.updateAutoTitle(state, id, sanitized);
+          render();
+        }, 200);
+      });
+
       terminal.onLineFeed(() => {
+        if (id !== state.activeId) return;
         if (window.YamiSuggest && typeof window.YamiSuggest.onLineBuffer === 'function') {
           window.YamiSuggest.onLineBuffer(terminal);
         }
@@ -161,7 +189,7 @@ window.YamiTabs = (() => {
       });
       resizeObs.observe(pane);
 
-      termInstances.set(id, { terminal, fitAddon, searchAddon, pane });
+      termInstances.set(id, { terminal, fitAddon, searchAddon, pane, titleDebounceTimer: null });
       resizeObservers.set(id, resizeObs);
 
       state = TabsState.addTab(state, { id, title: 'Shell' });
@@ -172,8 +200,13 @@ window.YamiTabs = (() => {
   }
 
   function closeTab(id) {
+    editingTabId = null;
     const inst = termInstances.get(id);
     if (inst) {
+      // titleDebounceTimer をクリア
+      if (inst.titleDebounceTimer) {
+        clearTimeout(inst.titleDebounceTimer);
+      }
       inst.terminal.dispose();
       inst.pane.remove();
       termInstances.delete(id);
@@ -191,6 +224,8 @@ window.YamiTabs = (() => {
   }
 
   function activate(id) {
+    editingTabId = null;
+    if (id === state.activeId) return; // 既にアクティブなら再描画不要(dblclick成立のため重要)
     state = TabsState.setActive(state, id);
     render();
     // Notify claude-panel which tab is now visible
@@ -210,6 +245,7 @@ window.YamiTabs = (() => {
   }
 
   function moveTab(id, toIndex) {
+    editingTabId = null;
     state = TabsState.moveTab(state, id, toIndex);
     render();
   }
@@ -271,6 +307,16 @@ window.YamiTabs = (() => {
   }
 
   function render() {
+    // editingTabId の自己修復ロジック：編集中DOM要素が実在しない場合は自動クリア
+    if (editingTabId) {
+      const editingEl = document.querySelector(`#tab-${editingTabId} .tab-title[contenteditable="true"]`);
+      if (!editingEl) {
+        editingTabId = null; // 編集要素が実在しない場合は自己修復
+      } else {
+        return; // 編集要素が実在する場合は再描画をスキップ
+      }
+    }
+
     const tabBar = document.getElementById('tab-bar');
     tabBar.innerHTML = '';
 
@@ -285,6 +331,64 @@ window.YamiTabs = (() => {
       titleEl.textContent = tab.title;
       tabEl.appendChild(titleEl);
 
+      // ダブルクリックで inline 編集モード
+      titleEl.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        if (editingTabId === tab.id) return; // 既に編集中なら何もしない
+        editingTabId = tab.id;
+        titleEl.contentEditable = 'true';
+        titleEl.focus();
+        // テキスト全選択
+        const range = document.createRange();
+        range.selectNodeContents(titleEl);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        // ドラッグ不可に
+        tabEl.draggable = false;
+
+        // Paste: plain text のみ
+        const pasteHandler = (e) => {
+          e.preventDefault();
+          const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+          document.execCommand('insertText', false, text);
+        };
+        titleEl.addEventListener('paste', pasteHandler);
+
+        // キーボード処理
+        const keydownHandler = (ke) => {
+          if (ke.key === 'Enter') {
+            ke.preventDefault();
+            titleEl.blur();
+          } else if (ke.key === 'Escape') {
+            ke.preventDefault();
+            titleEl.textContent = tab.title;
+            titleEl.blur();
+          }
+        };
+        titleEl.addEventListener('keydown', keydownHandler);
+
+        // Blur: 編集確定
+        const blurHandler = () => {
+          titleEl.removeEventListener('keydown', keydownHandler);
+          titleEl.removeEventListener('paste', pasteHandler);
+          titleEl.removeEventListener('blur', blurHandler);
+          titleEl.contentEditable = 'false';
+          tabEl.draggable = true;
+          editingTabId = null; // ← render()より前にクリア
+
+          const newTitle = titleEl.textContent.trim();
+          if (newTitle !== tab.title) {
+            const sanitized = newTitle ? sanitizeTitle(newTitle) : '';
+            state = TabsState.renameTab(state, tab.id, sanitized);
+            render();
+          } else {
+            titleEl.textContent = tab.title;
+          }
+        };
+        titleEl.addEventListener('blur', blurHandler);
+      });
+
       const closeBtn = document.createElement('button');
       closeBtn.className = 'tab-close';
       closeBtn.textContent = '×';
@@ -295,6 +399,7 @@ window.YamiTabs = (() => {
       tabEl.appendChild(closeBtn);
 
       tabEl.addEventListener('click', () => {
+        if (editingTabId === tab.id) return; // 編集中は無視
         activate(tab.id);
       });
 
@@ -338,7 +443,7 @@ window.YamiTabs = (() => {
 
   window.yamiterm.onData((id, data) => {
     const inst = termInstances.get(id);
-    if (inst && id === state.activeId) {
+    if (inst) {
       inst.terminal.write(data);
     }
   });
