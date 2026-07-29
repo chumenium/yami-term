@@ -10,6 +10,9 @@ const createSuggestSource = require('./main/suggest-source');
 const { checkForUpdate } = require('./main/update-checker');
 const themes = require('./renderer/themes');
 const pkg = require('./package.json');
+const fileService = require('./main/file-service');
+const ClaudeSessionDetector = require('./main/claude-session-detector');
+const FileActivityDetector = require('./main/file-activity-detector');
 
 // Load config on startup
 config.load();
@@ -28,6 +31,8 @@ let ptyManager = null;
 let approvalManager = null;
 let trayManager = null;
 let suggestSource = null;
+let claudeSessionDetector = null;
+let fileActivityDetector = null;
 
 // suggestSourceは内部にhistory/commandキャッシュを持つため、毎回new生成すると
 // キャッシュが効かず起動のたびPATH全ディレクトリを再スキャンしてしまう。
@@ -125,9 +130,26 @@ function setupPtyManager() {
     env: process.env,
   });
 
+  claudeSessionDetector = new ClaudeSessionDetector();
+  fileActivityDetector = new FileActivityDetector();
+
+  claudeSessionDetector.on('active-changed', (ptyId, isActive) => {
+    sendToRenderer('claude:active-changed', { id: ptyId, active: isActive });
+  });
+
+  fileActivityDetector.on('file-touched', (ptyId, fileInfo) => {
+    sendToRenderer('claude:file-touched', {
+      id: ptyId,
+      filePath: fileInfo.filePath,
+      action: fileInfo.action,
+      timestamp: fileInfo.timestamp,
+    });
+  });
+
   // Forward PTY data to renderer
   ptyManager.on('data', (payload) => {
     sendToRenderer('term:data', payload);
+    fileActivityDetector.feed(payload.id, payload.data);
     if (approvalManager && approvalManager.feed(payload.id, payload.data)) {
       updateTray();
     }
@@ -136,6 +158,7 @@ function setupPtyManager() {
   // Forward PTY exit to renderer
   ptyManager.on('exit', (payload) => {
     sendToRenderer('term:exit', payload);
+    claudeSessionDetector.stop(payload.id);
     if (approvalManager) {
       approvalManager.remove(payload.id);
       updateTray();
@@ -169,6 +192,10 @@ function setupIpcChannels() {
     const clampedCols = clampDimension(cols) || 80;
     const clampedRows = clampDimension(rows) || 24;
     const id = ptyManager.create({ cols: clampedCols, rows: clampedRows });
+    const pid = ptyManager.getPid(id);
+    if (claudeSessionDetector && pid) {
+      claudeSessionDetector.start(id, pid);
+    }
     return { id };
   });
 
@@ -326,6 +353,61 @@ function setupIpcChannels() {
       fs.appendFileSync(logFilePath, logLine, 'utf8');
     } catch (err) {
       console.error('[yami-term] failed to log renderer error:', err);
+    }
+  });
+
+  // fs:readFile - read file content
+  ipcMain.handle('fs:readFile', async (event, payload) => {
+    const { path: filePath } = payload;
+    try {
+      return await fileService.readFile(filePath);
+    } catch (err) {
+      throw new Error(`readFile failed: ${err.message}`);
+    }
+  });
+
+  // fs:listDir - list directory contents
+  ipcMain.handle('fs:listDir', async (event, payload) => {
+    const { path: dirPath } = payload;
+    try {
+      return await fileService.listDir(dirPath);
+    } catch (err) {
+      throw new Error(`listDir failed: ${err.message}`);
+    }
+  });
+
+  // fs:watchFile - watch file for changes
+  ipcMain.handle('fs:watchFile', async (event, payload) => {
+    const { path: filePath } = payload;
+    try {
+      await fileService.watchFile(filePath, () => {
+        sendToRenderer('fs:changed', { path: filePath });
+      });
+      return { success: true };
+    } catch (err) {
+      throw new Error(`watchFile failed: ${err.message}`);
+    }
+  });
+
+  // fs:unwatchFile - unwatch file
+  ipcMain.handle('fs:unwatchFile', async (event, payload) => {
+    const { path: filePath } = payload;
+    try {
+      await fileService.unwatchFile(filePath);
+      return { success: true };
+    } catch (err) {
+      throw new Error(`unwatchFile failed: ${err.message}`);
+    }
+  });
+
+  // fs:writeFile - write file content
+  ipcMain.handle('fs:writeFile', async (event, payload) => {
+    const { path: filePath, content } = payload;
+    try {
+      await fileService.writeFile(filePath, content);
+      return { success: true };
+    } catch (err) {
+      throw new Error(`writeFile failed: ${err.message}`);
     }
   });
 }

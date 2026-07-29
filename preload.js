@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('yamiterm', {
   // レンダラー側でCmd(mac)/Ctrl(Windows・Linux)のショートカット修飾キーを
   // 判定するために公開する定数値(関数ではない)。
   platform: process.platform,
+  homedir: process.env.HOME || process.env.USERPROFILE || require('os').homedir(),
 
   async createTerm() {
     return ipcRenderer.invoke('term:create');
@@ -89,5 +90,45 @@ contextBridge.exposeInMainWorld('yamiterm', {
 
   async getPendingUpdateNotification() {
     return ipcRenderer.invoke('update:getPendingNotification');
+  },
+
+  claudePanel: {
+    onActiveChanged(callback) {
+      ipcRenderer.on('claude:active-changed', (event, payload) => {
+        callback(payload);
+      });
+    },
+
+    onFileTouched(callback) {
+      ipcRenderer.on('claude:file-touched', (event, payload) => {
+        callback(payload);
+      });
+    },
+
+    onFsChanged(callback) {
+      ipcRenderer.on('fs:changed', (event, payload) => {
+        callback(payload);
+      });
+    },
+
+    async readFile(filePath) {
+      return ipcRenderer.invoke('fs:readFile', { path: filePath });
+    },
+
+    async listDir(dirPath) {
+      return ipcRenderer.invoke('fs:listDir', { path: dirPath });
+    },
+
+    async watchFile(filePath) {
+      return ipcRenderer.invoke('fs:watchFile', { path: filePath });
+    },
+
+    async unwatchFile(filePath) {
+      return ipcRenderer.invoke('fs:unwatchFile', { path: filePath });
+    },
+
+    async writeFile(filePath, content) {
+      return ipcRenderer.invoke('fs:writeFile', { path: filePath, content });
+    },
   },
 });

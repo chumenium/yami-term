@@ -250,4 +250,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (err) {
     console.error('[yami-term] onTrayActivateTab wiring failed:', err);
   }
+
+  // (i) Claude パネルの初期化（ファイルツリーとビューア）
+  try {
+    const fileTreeContainer = document.getElementById('file-tree-container');
+    const fileViewerContainer = document.getElementById('file-viewer-container');
+
+    if (fileViewerContainer && window.YamiFileViewer && typeof window.YamiFileViewer.init === 'function') {
+      window.YamiFileViewer.init(fileViewerContainer);
+      console.log('[yami-term] YamiFileViewer.init completed');
+    }
+
+    if (fileTreeContainer && window.YamiFileTree && typeof window.YamiFileTree.init === 'function') {
+      const rootDir = window.yamiterm?.homedir || '/';
+      window.YamiFileTree.init(rootDir, fileTreeContainer, (filePath) => {
+        if (window.YamiFileViewer && typeof window.YamiFileViewer.openFile === 'function') {
+          window.YamiFileViewer.openFile(filePath);
+        }
+      });
+      console.log('[yami-term] YamiFileTree.init completed');
+    }
+  } catch (err) {
+    console.error('[yami-term] init failed: Claude panel', err);
+  }
 });

@@ -4,10 +4,92 @@ window.YamiTabs = (() => {
   const termInstances = new Map();
   let resizeObservers = new Map();
   let initialized = false;
+  let resizerInitialized = false;
+
+  function initResizer() {
+    if (resizerInitialized) return;
+    resizerInitialized = true;
+
+    const terminalsContainer = document.getElementById('terminals');
+
+    // Create resizer and panel elements
+    const resizer = document.createElement('div');
+    resizer.id = 'panel-resizer';
+
+    const claudePanel = document.createElement('div');
+    claudePanel.id = 'claude-panel';
+
+    const panelContainer = document.createElement('div');
+    panelContainer.className = 'claude-panel-container';
+
+    const fileTreeContainer = document.createElement('div');
+    fileTreeContainer.id = 'file-tree-container';
+
+    const fileViewerContainer = document.createElement('div');
+    fileViewerContainer.id = 'file-viewer-container';
+
+    panelContainer.appendChild(fileTreeContainer);
+    panelContainer.appendChild(fileViewerContainer);
+    claudePanel.appendChild(panelContainer);
+
+    terminalsContainer.appendChild(resizer);
+    terminalsContainer.appendChild(claudePanel);
+
+    // Load saved panel width
+    const savedPanelWidth = localStorage.getItem('yami:claude-panel-width');
+    if (savedPanelWidth) {
+      claudePanel.style.width = savedPanelWidth + 'px';
+    }
+
+    // Resizer drag functionality
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    resizer.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = claudePanel.offsetWidth;
+      resizer.classList.add('dragging');
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      e.preventDefault();
+
+      const delta = startX - e.clientX; // Dragging left = positive delta
+      const newWidth = Math.max(240, Math.min(600, startWidth + delta));
+
+      claudePanel.style.width = newWidth + 'px';
+
+      // Trigger terminal resize
+      triggerTerminalRefit();
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        resizer.classList.remove('dragging');
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+
+        // Save panel width
+        localStorage.setItem('yami:claude-panel-width', claudePanel.offsetWidth);
+
+        // Final terminal refit
+        triggerTerminalRefit();
+      }
+    });
+  }
 
   function init() {
     if (initialized) return;
     initialized = true;
+
+    initResizer();
 
     const newTabBtn = document.getElementById('new-tab-btn');
     if (newTabBtn) {
@@ -111,6 +193,10 @@ window.YamiTabs = (() => {
   function activate(id) {
     state = TabsState.setActive(state, id);
     render();
+    // Notify claude-panel which tab is now visible
+    if (window.YamiClaudePanel && typeof window.YamiClaudePanel.notifyActiveTabChanged === 'function') {
+      window.YamiClaudePanel.notifyActiveTabChanged(id);
+    }
   }
 
   // delta分だけ現在のタブからずらして切り替える(循環)。Cmd+Shift+]/[ 用
@@ -167,6 +253,21 @@ window.YamiTabs = (() => {
         window.yamiterm.write(activeId, command + '\r');
       }, 400);
     }
+  }
+
+  function triggerTerminalRefit() {
+    if (state.activeId) {
+      const inst = termInstances.get(state.activeId);
+      if (inst && inst.fitAddon) {
+        requestAnimationFrame(() => {
+          inst.fitAddon.fit();
+        });
+      }
+    }
+  }
+
+  function getTermInstance(id) {
+    return termInstances.get(id);
   }
 
   function render() {
@@ -260,5 +361,7 @@ window.YamiTabs = (() => {
     getActiveId,
     getActiveTermPane,
     getActiveSearchAddon,
+    triggerTerminalRefit,
+    getTermInstance,
   };
 })();
