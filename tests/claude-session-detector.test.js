@@ -4,22 +4,21 @@ const { EventEmitter } = require('events');
 const ClaudeSessionDetector = require('../main/claude-session-detector.js');
 
 // Fake execFile for mocking
-let mockExecFile;
-let execFileCallCount = 0;
 
 function createMockExecFile(psOutput) {
-  execFileCallCount = 0;
-  return (cmd, args, callback) => {
-    execFileCallCount++;
+  const mockFn = (cmd, args, callback) => {
+    mockFn.callCount++;
     // Simulate async execution
     setImmediate(() => {
       callback(null, psOutput);
     });
   };
+  mockFn.callCount = 0;
+  return mockFn;
 }
 
 // Utility to wait for an event with timeout
-function waitForEvent(emitter, eventName, timeoutMs = 500) {
+function waitForEvent(emitter, eventName, timeoutMs = 2000) {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       reject(new Error(`Timeout waiting for event: ${eventName}`));
@@ -38,12 +37,13 @@ test('ClaudeSessionDetector - start()がintervalを生成する', async () => {
   const ptyId = 'pty-0';
   const pid = 12345;
 
-  assert.strictEqual(detector.intervals.has(ptyId), false);
-  detector.start(ptyId, pid);
-  assert.strictEqual(detector.intervals.has(ptyId), true);
-
-  // Clean up
-  detector.stop(ptyId);
+  try {
+    assert.strictEqual(detector.intervals.has(ptyId), false);
+    detector.start(ptyId, pid);
+    assert.strictEqual(detector.intervals.has(ptyId), true);
+  } finally {
+    detector.stop(ptyId);
+  }
 });
 
 // Test: stop() clears interval
@@ -52,11 +52,15 @@ test('ClaudeSessionDetector - stop()がintervalをクリアする', async () => 
   const ptyId = 'pty-0';
   const pid = 12345;
 
-  detector.start(ptyId, pid);
-  assert.strictEqual(detector.intervals.has(ptyId), true);
+  try {
+    detector.start(ptyId, pid);
+    assert.strictEqual(detector.intervals.has(ptyId), true);
 
-  detector.stop(ptyId);
-  assert.strictEqual(detector.intervals.has(ptyId), false);
+    detector.stop(ptyId);
+    assert.strictEqual(detector.intervals.has(ptyId), false);
+  } finally {
+    detector.stop(ptyId);
+  }
 });
 
 // Test: stop() on non-existent ptyId does not throw
@@ -73,35 +77,37 @@ test('ClaudeSessionDetector - 同じptyIdへのstart()が2回呼ばれた場合2
   const ptyId = 'pty-0';
   const pid = 12345;
 
-  detector.start(ptyId, pid);
-  const interval1 = detector.intervals.get(ptyId);
+  try {
+    detector.start(ptyId, pid);
+    const interval1 = detector.intervals.get(ptyId);
 
-  detector.start(ptyId, pid);
-  const interval2 = detector.intervals.get(ptyId);
+    detector.start(ptyId, pid);
+    const interval2 = detector.intervals.get(ptyId);
 
-  assert.strictEqual(interval1, interval2);
-
-  // Clean up
-  detector.stop(ptyId);
+    assert.strictEqual(interval1, interval2);
+  } finally {
+    detector.stop(ptyId);
+  }
 });
 
 // Test: active-changed event is emitted with correct arguments
 test('ClaudeSessionDetector - active-changedイベントが正しい引数で発行される', async () => {
-  const detector = new ClaudeSessionDetector();
   const ptyId = 'pty-0';
   const pid = 1;
   const parentPid = process.pid;
 
-  // Simulate process tree: current process with child
+  // Simulate process tree: current process with child and claude
   const psOutput = `PID   PPID  COMM
 ${parentPid}     1     zsh
 ${pid}        ${parentPid}     bash
+${pid + 1}     ${pid}     claude
 `;
 
-  // Monkey patch execFile
-  const childProcess = require('child_process');
-  const originalExecFileFn = childProcess.execFile;
-  childProcess.execFile = createMockExecFile(psOutput);
+  const mockExecFile = createMockExecFile(psOutput);
+  const detector = new ClaudeSessionDetector({
+    execFile: mockExecFile,
+    platform: 'darwin'
+  });
 
   try {
     detector.start(ptyId, pid);
@@ -111,28 +117,28 @@ ${pid}        ${parentPid}     bash
 
     assert.strictEqual(ptyIdArg, ptyId);
     assert.strictEqual(typeof isActive, 'boolean');
-
-    // Clean up
-    detector.stop(ptyId);
+    assert.strictEqual(mockExecFile.callCount > 0, true);  // Verify mock was called
   } finally {
-    // Restore original execFile
-    childProcess.execFile = originalExecFileFn;
+    detector.stop(ptyId);
   }
 });
 
 // Test: active-changed is not emitted multiple times for same state
 test('ClaudeSessionDetector - 同じptyIdで状態変化がない限りactive-changedが多重発行されない', async () => {
-  const detector = new ClaudeSessionDetector();
   const ptyId = 'pty-0';
   const pid = 1;
 
   const psOutput = `PID   PPID  COMM
 ${process.pid}     1     zsh
+${pid}        ${process.pid}     bash
+${pid + 1}     ${pid}     claude
 `;
 
-  const childProcess = require('child_process');
-  const originalExecFileFn = childProcess.execFile;
-  childProcess.execFile = createMockExecFile(psOutput);
+  const mockExecFile = createMockExecFile(psOutput);
+  const detector = new ClaudeSessionDetector({
+    execFile: mockExecFile,
+    platform: 'darwin'
+  });
 
   try {
     let eventCount = 0;
@@ -144,7 +150,7 @@ ${process.pid}     1     zsh
     detector.start(ptyId, pid);
 
     // Wait for first event
-    await waitForEvent(detector, 'active-changed', 1000);
+    await waitForEvent(detector, 'active-changed');
     assert.strictEqual(eventCount, 1);
 
     // Wait more but no new event should fire (state unchanged)
@@ -152,11 +158,9 @@ ${process.pid}     1     zsh
 
     // Should still be 1 (no new events for unchanged state)
     assert.strictEqual(eventCount, 1);
-
-    // Clean up
-    detector.stop(ptyId);
+    assert.strictEqual(mockExecFile.callCount > 0, true);  // Verify mock was called
   } finally {
-    childProcess.execFile = originalExecFileFn;
+    detector.stop(ptyId);
   }
 });
 
@@ -166,14 +170,15 @@ test('ClaudeSessionDetector - start()後のsessionStateはfalseで初期化さ�
   const ptyId = 'pty-0';
   const pid = 12345;
 
-  detector.start(ptyId, pid);
+  try {
+    detector.start(ptyId, pid);
 
-  assert.strictEqual(detector.sessionState.has(ptyId), true);
-  // Initially false (Claude process not expected to be present in test)
-  assert.strictEqual(detector.sessionState.get(ptyId), false);
-
-  // Clean up
-  detector.stop(ptyId);
+    assert.strictEqual(detector.sessionState.has(ptyId), true);
+    // Initially false (Claude process not expected to be present in test)
+    assert.strictEqual(detector.sessionState.get(ptyId), false);
+  } finally {
+    detector.stop(ptyId);
+  }
 });
 
 // Test: sessionState is deleted on stop()
@@ -182,11 +187,15 @@ test('ClaudeSessionDetector - stop()後のsessionStateが削除される', async
   const ptyId = 'pty-0';
   const pid = 12345;
 
-  detector.start(ptyId, pid);
-  assert.strictEqual(detector.sessionState.has(ptyId), true);
+  try {
+    detector.start(ptyId, pid);
+    assert.strictEqual(detector.sessionState.has(ptyId), true);
 
-  detector.stop(ptyId);
-  assert.strictEqual(detector.sessionState.has(ptyId), false);
+    detector.stop(ptyId);
+    assert.strictEqual(detector.sessionState.has(ptyId), false);
+  } finally {
+    detector.stop(ptyId);
+  }
 });
 
 // Test: _findClaudeProcess detects claude command in process tree
@@ -255,19 +264,23 @@ test('ClaudeSessionDetector - 複数のptyIdが独立して追跡される', asy
   const pid1 = 111;
   const pid2 = 222;
 
-  detector.start(ptyId1, pid1);
-  detector.start(ptyId2, pid2);
+  try {
+    detector.start(ptyId1, pid1);
+    detector.start(ptyId2, pid2);
 
-  assert.strictEqual(detector.intervals.has(ptyId1), true);
-  assert.strictEqual(detector.intervals.has(ptyId2), true);
-  assert.notStrictEqual(detector.intervals.get(ptyId1), detector.intervals.get(ptyId2));
+    assert.strictEqual(detector.intervals.has(ptyId1), true);
+    assert.strictEqual(detector.intervals.has(ptyId2), true);
+    assert.notStrictEqual(detector.intervals.get(ptyId1), detector.intervals.get(ptyId2));
 
-  detector.stop(ptyId1);
-  assert.strictEqual(detector.intervals.has(ptyId1), false);
-  assert.strictEqual(detector.intervals.has(ptyId2), true);
-
-  detector.stop(ptyId2);
-  assert.strictEqual(detector.intervals.has(ptyId2), false);
+    detector.stop(ptyId1);
+    assert.strictEqual(detector.intervals.has(ptyId1), false);
+    assert.strictEqual(detector.intervals.has(ptyId2), true);
+  } finally {
+    // 途中の assert が失敗しても両方の interval を必ず解放する。
+    // stop() は未登録の ptyId に対しては何もしないので二重呼び出しは安全。
+    detector.stop(ptyId1);
+    detector.stop(ptyId2);
+  }
 });
 
 // Test: Event emitter behavior

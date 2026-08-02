@@ -2,10 +2,12 @@ const { EventEmitter } = require('events');
 const { execFile } = require('child_process');
 
 class ClaudeSessionDetector extends EventEmitter {
-  constructor() {
+  constructor(options = {}) {
     super();
     this.intervals = new Map();
     this.sessionState = new Map();
+    this._execFile = (options && options.execFile) || execFile;
+    this._platform = (options && options.platform) || process.platform;
   }
 
   start(ptyId, pid) {
@@ -35,11 +37,11 @@ class ClaudeSessionDetector extends EventEmitter {
     // Claude process detection is only supported on macOS.
     // On other platforms (Windows, Linux), ps -A output format differs
     // and locating 'claude' command is not reliable.
-    if (process.platform !== 'darwin') {
+    if (this._platform !== 'darwin') {
       return;
     }
 
-    execFile('ps', ['-A', '-o', 'pid,ppid,comm'], (err, stdout) => {
+    this._execFile('ps', ['-A', '-o', 'pid,ppid,comm'], (err, stdout) => {
       if (err) {
         return;
       }
