@@ -24,7 +24,7 @@ function createSuggestSource(options = {}) {
 
   let commandCache = null;
 
-  // Parse zsh extended history format: ": timestamp:0;command"
+  // Parse zsh extended history format: ": timestamp:elapsed_seconds;command"
   function parseZshHistory(content) {
     const lines = content.split('\n');
     const commands = new Map(); // Map to deduplicate, key=command, value=timestamp
@@ -33,24 +33,29 @@ function createSuggestSource(options = {}) {
       const line = lines[i].trim();
       if (!line) continue;
 
-      // Skip multi-line commands (lines ending with backslash)
-      if (i + 1 < lines.length && lines[i + 1].trim().endsWith('\\')) {
+      // Skip lines that are continuation lines (end with backslash)
+      // Note: In zsh extended history, multiline commands have \n escaped as a single line,
+      // so this check is primarily for plain bash history format compatibility.
+      if (line.endsWith('\\')) {
         continue;
       }
 
       let cmd = null;
+      let timestamp = 0;
 
-      // Try to parse zsh extended history format
-      const match = line.match(/^:\s*(\d+):0;(.+)$/);
+      // Try to parse zsh extended history format: ": timestamp:elapsed_seconds;command"
+      const match = line.match(/^:\s*(\d+):(\d+);(.+)$/);
       if (match) {
-        cmd = match[2];
+        cmd = match[3];
+        timestamp = parseInt(match[1], 10);
       } else if (!line.startsWith(':')) {
         // Plain line (non-extended format)
         cmd = line;
+        timestamp = 0;
       }
 
       if (cmd && !commands.has(cmd)) {
-        commands.set(cmd, parseInt(lines[i].match(/\d+/) ? lines[i].match(/\d+/)[0] : 0, 10));
+        commands.set(cmd, timestamp);
       }
     }
 

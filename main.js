@@ -159,6 +159,7 @@ function setupPtyManager() {
   ptyManager.on('exit', (payload) => {
     sendToRenderer('term:exit', payload);
     claudeSessionDetector.stop(payload.id);
+    fileActivityDetector.reset(payload.id);
     if (approvalManager) {
       approvalManager.remove(payload.id);
       updateTray();
@@ -226,6 +227,7 @@ function setupIpcChannels() {
   ipcMain.on('term:close', (event, payload) => {
     const { id } = payload;
     ptyManager.dispose(id);
+    fileActivityDetector.reset(id);
     if (approvalManager) {
       approvalManager.remove(id);
       updateTray();
@@ -443,6 +445,10 @@ app.on('ready', () => {
 app.on('window-all-closed', () => {
   if (ptyManager) {
     ptyManager.disposeAll();
+    // Clean up ptyManager's EventEmitter listeners
+    if (ptyManager.removeAllListeners) {
+      ptyManager.removeAllListeners();
+    }
   }
   if (trayManager) {
     trayManager.destroy();

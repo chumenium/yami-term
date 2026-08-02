@@ -6,6 +6,7 @@ window.YamiFileTree = (() => {
   let fileOnTouchedListener = null;
   let onFileSelect = null;
   let initialized = false;
+  const MAX_TREE_DEPTH = 20;
 
   function init(rootDir, containerEl, onFileSelectCallback) {
     if (initialized) return;
@@ -55,6 +56,7 @@ window.YamiFileTree = (() => {
 
     const rootNode = document.createElement('div');
     rootNode.className = 'tree-node tree-node-root';
+    rootNode.dataset.depth = '0';
 
     const rootLabel = document.createElement('div');
     rootLabel.className = 'tree-label';
@@ -69,13 +71,17 @@ window.YamiFileTree = (() => {
     rootNode.appendChild(rootChildren);
 
     expandedDirs.add(rootPath);
-    await renderChildren(rootPath, rootChildren);
+    await renderChildren(rootPath, rootChildren, 0);
 
     treeEl.appendChild(rootNode);
   }
 
-  async function renderChildren(dirPath, parentEl) {
+  async function renderChildren(dirPath, parentEl, depth = 0) {
     try {
+      if (depth >= MAX_TREE_DEPTH) {
+        return; // Stop recursion at max depth to prevent stack overflow
+      }
+
       if (!window.yamiterm?.claudePanel?.listDir) {
         console.error('YamiFileTree: window.yamiterm.claudePanel.listDir is not available');
         return;
@@ -87,11 +93,12 @@ window.YamiFileTree = (() => {
         return;
       }
 
-      entries.forEach(entry => {
+      for (const entry of entries) {
         const nodeEl = document.createElement('div');
         nodeEl.className = 'tree-node';
         nodeEl.dataset.path = entry.path;
         nodeEl.dataset.isDir = entry.isDir ? '1' : '0';
+        nodeEl.dataset.depth = String(depth);
 
         const labelEl = document.createElement('div');
         labelEl.className = 'tree-label';
@@ -129,7 +136,7 @@ window.YamiFileTree = (() => {
           childrenEl.className = 'tree-children';
           if (expandedDirs.has(entry.path)) {
             childrenEl.style.display = 'block';
-            await renderChildren(entry.path, childrenEl);
+            await renderChildren(entry.path, childrenEl, depth + 1);
           } else {
             childrenEl.style.display = 'none';
           }
@@ -137,7 +144,7 @@ window.YamiFileTree = (() => {
         }
 
         parentEl.appendChild(nodeEl);
-      });
+      }
     } catch (err) {
       console.error('YamiFileTree: failed to list directory', dirPath, err);
     }
@@ -154,7 +161,8 @@ window.YamiFileTree = (() => {
     } else {
       expandedDirs.add(dirPath);
       childrenEl.innerHTML = '';
-      await renderChildren(dirPath, childrenEl);
+      const depth = Number(nodeEl.dataset.depth) || 0;
+      await renderChildren(dirPath, childrenEl, depth + 1);
       childrenEl.style.display = 'block';
       toggleBtn.textContent = '▼';
     }

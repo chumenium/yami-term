@@ -1,7 +1,7 @@
 window.YamiSuggest = (() => {
   let state = null;
   let debounceTimer = null;
-  let isEnabled = false;
+  let isEnabled = true;
   let getActiveTerm = null;
   let initialized = false;
 

@@ -136,7 +136,7 @@ function isShellAllowed(shellPath) {
     ? [
       /^[A-Za-z]:\\Windows\\System32\\cmd\.exe$/i,
       /^[A-Za-z]:\\Windows\\System32\\WindowsPowerShell\\v1\.0\\powershell\.exe$/i,
-      /^[A-Za-z]:\\Program Files\\PowerShell\\7\\pwsh\.exe$/i,
+      /^[A-Za-z]:\\Program Files\\PowerShell\\[0-9]+(?:\.[0-9]+)*\\pwsh\.exe$/i,
     ]
     : [
       /^\/bin\/(zsh|bash|sh)$/,

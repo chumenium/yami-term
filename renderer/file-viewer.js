@@ -69,8 +69,11 @@ window.YamiFileViewer = (() => {
 
           const fileData = openFiles.get(path);
           if (fileData.isDirty) {
-            // File is being edited; show notification banner instead of auto-reload
+            // The user has unsaved edits: never overwrite them with the on-disk content.
+            // Show the banner only when this file is on screen; showExternalChangeNotification()
+            // already guards on activeFilePath.
             showExternalChangeNotification(path);
+            fileData.externalChangePending = true;
             return;
           }
 
@@ -90,7 +93,7 @@ window.YamiFileViewer = (() => {
     }
   }
 
-  async function openFile(filePath) {
+  function openFile(filePath) {
     if (openFiles.has(filePath)) {
       // Already open, just activate
       activeFilePath = filePath;
@@ -105,56 +108,65 @@ window.YamiFileViewer = (() => {
         return;
       }
 
-      const result = await window.yamiterm.claudePanel.readFile(filePath);
-      if (!result) {
-        console.warn('YamiFileViewer: failed to read file', filePath);
-        return;
-      }
+      window.yamiterm.claudePanel.readFile(filePath).then((result) => {
+        if (!result) {
+          console.warn('YamiFileViewer: failed to read file', filePath);
+          return;
+        }
 
-      const { content, truncated } = result;
+        const { content, truncated } = result;
 
-      const tabEl = document.createElement('div');
-      tabEl.className = 'file-viewer-tab';
-      tabEl.dataset.path = filePath;
+        const tabEl = document.createElement('div');
+        tabEl.className = 'file-viewer-tab';
+        tabEl.dataset.path = filePath;
 
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'file-viewer-tab-name';
-      const fileName = filePath.split('/').pop();
-      nameSpan.textContent = fileName;
-      tabEl.appendChild(nameSpan);
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'file-viewer-tab-name';
+        const fileName = filePath.split('/').pop();
+        nameSpan.textContent = fileName;
+        tabEl.appendChild(nameSpan);
 
-      const closeBtn = document.createElement('button');
-      closeBtn.className = 'file-viewer-tab-close';
-      closeBtn.textContent = '×';
-      closeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        closeFile(filePath);
-      });
-      tabEl.appendChild(closeBtn);
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'file-viewer-tab-close';
+        closeBtn.textContent = '×';
+        closeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeFile(filePath);
+        });
+        tabEl.appendChild(closeBtn);
 
-      tabEl.addEventListener('click', () => {
+        tabEl.addEventListener('click', () => {
+          activeFilePath = filePath;
+          renderTabs();
+          showContent(filePath);
+        });
+
+        openFiles.set(filePath, {
+          tab: tabEl,
+          content,
+          isDirty: false,
+          truncated,
+          isSaving: false,
+          externalChangePending: false,
+        });
+
+        // Start watching for changes
+        if (window.yamiterm?.claudePanel?.watchFile) {
+          window.yamiterm.claudePanel.watchFile(filePath)
+            .then(() => {
+              watchedFiles.add(filePath);
+            })
+            .catch((err) => {
+              console.error('YamiFileViewer: failed to watch file', filePath, err);
+            });
+        }
+
         activeFilePath = filePath;
         renderTabs();
         showContent(filePath);
+      }).catch((err) => {
+        console.error('YamiFileViewer: failed to open file', filePath, err);
       });
-
-      openFiles.set(filePath, {
-        tab: tabEl,
-        content,
-        isDirty: false,
-        truncated,
-        isSaving: false,
-      });
-
-      // Start watching for changes
-      if (window.yamiterm?.claudePanel?.watchFile) {
-        window.yamiterm.claudePanel.watchFile(filePath);
-        watchedFiles.add(filePath);
-      }
-
-      activeFilePath = filePath;
-      renderTabs();
-      showContent(filePath);
     } catch (err) {
       console.error('YamiFileViewer: failed to open file', filePath, err);
     }
@@ -192,11 +204,10 @@ window.YamiFileViewer = (() => {
     // Stop watching
     if (watchedFiles.has(filePath)) {
       if (window.yamiterm?.claudePanel?.unwatchFile) {
-        try {
-          window.yamiterm.claudePanel.unwatchFile(filePath);
-        } catch (err) {
-          console.error('YamiFileViewer: failed to unwatch file', filePath, err);
-        }
+        window.yamiterm.claudePanel.unwatchFile(filePath)
+          .catch((err) => {
+            console.error('YamiFileViewer: failed to unwatch file', filePath, err);
+          });
       }
       watchedFiles.delete(filePath);
     }
@@ -231,6 +242,7 @@ window.YamiFileViewer = (() => {
       if (!result) return;
 
       const fileData = openFiles.get(filePath);
+      if (!fileData) return;
       fileData.content = result.content;
       fileData.truncated = result.truncated;
       fileData.isDirty = false;
@@ -266,6 +278,12 @@ window.YamiFileViewer = (() => {
 
     const fileData = openFiles.get(filePath);
     contentEl.innerHTML = '';
+
+    // If external change was pending while tab was inactive, show banner now
+    if (fileData.externalChangePending) {
+      showExternalChangeNotification(filePath);
+      fileData.externalChangePending = false;
+    }
 
     // Create editor container
     const editorContainer = document.createElement('div');
@@ -410,6 +428,7 @@ window.YamiFileViewer = (() => {
 
   function showExternalChangeNotification(filePath) {
     if (!contentEl) return;
+    if (activeFilePath !== filePath) return; // Only show banner for the active file
 
     // Check if banner already exists
     let banner = contentEl.querySelector('.external-change-banner');

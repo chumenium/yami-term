@@ -13,8 +13,14 @@ function stripAnsi(str) {
 
 function compilePatterns(patternConfigs) {
   const compiled = [];
+  const MAX_PATTERN_LENGTH = 200; // Prevent ReDoS via long patterns
   for (const cfg of patternConfigs || []) {
     if (!cfg || cfg.enabled === false || typeof cfg.pattern !== 'string') continue;
+    // Check pattern length to prevent ReDoS attacks
+    if (cfg.pattern.length > MAX_PATTERN_LENGTH) {
+      console.warn(`[yami-term] Pattern exceeds max length (${MAX_PATTERN_LENGTH}), skipping: ${cfg.pattern.slice(0, 50)}...`);
+      continue;
+    }
     try {
       compiled.push(new RegExp(cfg.pattern, 'i'));
     } catch (err) {
@@ -42,10 +48,14 @@ class ApprovalDetector {
   }
 
   matched() {
+    // Buffer is already tail-limited to MAX_BUFFER_LENGTH in feed(),
+    // so no further truncation is needed here.
     return this.patterns.some(re => re.test(this.buffer));
   }
 
   matchedSnippet() {
+    // Buffer is already tail-limited to MAX_BUFFER_LENGTH in feed(),
+    // so no further truncation is needed here.
     for (const re of this.patterns) {
       const m = this.buffer.match(re);
       if (m) {

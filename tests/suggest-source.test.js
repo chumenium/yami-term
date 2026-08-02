@@ -371,3 +371,31 @@ test('query() result objects have text and type properties', (t) => {
     cleanupTempDir(tmpDir);
   }
 });
+
+test('query() parses zsh extended history with non-zero elapsed_seconds', (t) => {
+  const tmpDir = createTempDir();
+  try {
+    const historyFile = path.join(tmpDir, '.zsh_history');
+    // zsh拡張履歴でelapsed_seconds (第2フィールド) が0以外の行を含む
+    const content = [
+      ': 1755000000:12;git status',      // elapsed_seconds = 12
+      ': 1755000001:5;git log',          // elapsed_seconds = 5
+      ': 1755000002:0;git commit',       // elapsed_seconds = 0 (既存形式互換)
+      'plain old command',
+    ].join('\n');
+    fs.writeFileSync(historyFile, content, 'utf8');
+
+    const source = createSuggestSource({ historyFile, pathEnv: '/dev/null' });
+    const results = source.query('git');
+
+    assert(Array.isArray(results));
+    const gitResults = results.filter(r => r.type === 'history');
+
+    // 全てのコマンドが正しくパースされることを検証
+    assert(gitResults.some(r => r.text === 'git status'));
+    assert(gitResults.some(r => r.text === 'git log'));
+    assert(gitResults.some(r => r.text === 'git commit'));
+  } finally {
+    cleanupTempDir(tmpDir);
+  }
+});

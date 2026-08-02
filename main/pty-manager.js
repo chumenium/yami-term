@@ -99,6 +99,14 @@ class PtyManager extends EventEmitter {
       return;
     }
     try {
+      // Remove only the listeners registered by this class (data, exit).
+      // Do NOT call removeAllListeners() without arguments, as it would also
+      // remove node-pty's internal 'error' and 'close' handlers on the socket,
+      // causing uncaught exceptions if socket errors occur during kill().
+      if (typeof record.process.removeAllListeners === 'function') {
+        record.process.removeAllListeners('data');
+        record.process.removeAllListeners('exit');
+      }
       record.process.kill();
     } catch (err) {
       // ignore kill errors
