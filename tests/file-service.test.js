@@ -57,7 +57,8 @@ test('file-service.js - readFile: 存在しないパスでエラーになるこ�
 });
 
 test('file-service.js - listDir: ディレクトリエントリがname/path/isDirectoryの形で返される', async (t) => {
-  const tmpDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-file-service-')));
+  // fs.promises.realpath() と同じ結果を得るため、fs.realpathSync.native() を使用（8.3短縮名を展開）
+  const tmpDir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-file-service-')));
   const subDir = path.join(tmpDir, 'subdir');
   const testFile = path.join(tmpDir, 'test.txt');
 
@@ -77,12 +78,12 @@ test('file-service.js - listDir: ディレクトリエントリがname/path/isDi
     // test.txt はファイル
     assert.ok(entries['test.txt']);
     assert.strictEqual(entries['test.txt'].isDirectory, false);
-    assert.strictEqual(entries['test.txt'].path, fs.realpathSync(testFile));
+    assert.strictEqual(entries['test.txt'].path, fs.realpathSync.native(testFile));
 
     // subdir はディレクトリ
     assert.ok(entries['subdir']);
     assert.strictEqual(entries['subdir'].isDirectory, true);
-    assert.strictEqual(entries['subdir'].path, fs.realpathSync(subDir));
+    assert.strictEqual(entries['subdir'].path, fs.realpathSync.native(subDir));
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -341,14 +342,23 @@ test('file-service.js - writeFile: 存在する親ディレクトリ配下に新
 
 test('file-service.js - writeFile: 許可ルート内のdanglingシンボリックリンク経由での許可ルート外書き込みが拒否されること', async (t) => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yami-term-file-service-'));
-  // /private/tmp is outside the realpath'd os.tmpdir() (which resolves under
-  // /private/var/folders/.../T on macOS), so it's a reliable "outside allowed roots" target here.
-  const outsideDir = fs.mkdtempSync('/private/tmp/yami-term-outside-');
+  // Create outsideDir in os.homedir() to be platform-independent (not /private/tmp which is macOS-only)
+  const outsideDir = fs.mkdtempSync(path.join(os.homedir(), 'yami-term-outside-'));
   const danglingLinkPath = path.join(tmpDir, 'evil-link.txt');
   const outsideTarget = path.join(outsideDir, 'pwned.txt');
 
   try {
-    fs.symlinkSync(outsideTarget, danglingLinkPath);
+    // Attempt to create symlink; if EPERM/EACCES (Windows dev mode issue), skip this test
+    try {
+      fs.symlinkSync(outsideTarget, danglingLinkPath);
+    } catch (err) {
+      if (err.code === 'EPERM' || err.code === 'EACCES') {
+        // Windows may require admin/dev mode for symlinks; skip gracefully
+        t.skip();
+        return;
+      }
+      throw err;
+    }
 
     await assert.rejects(
       async () => {
